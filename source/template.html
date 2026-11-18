@@ -1,0 +1,739 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Mini R4: จากบล็อกสู่โค้ด — เรียน MATRIXblock คู่ Arduino</title>
+<meta name="description" content="สื่อการสอน MATRIXblock Mini R4 เรียนบล็อกควบคู่กับโค้ด Arduino C++ ไลบรารี MatrixMiniR4.h">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans+Thai:wght@400;500;600;700&family=Noto+Sans+Lao:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect x='6' y='14' width='26' height='18' rx='4' fill='%2300878F'/%3E%3Crect x='32' y='32' width='26' height='18' rx='4' fill='%2310282C'/%3E%3Cpath d='M32 23h6v18' stroke='%23FFC857' stroke-width='5' fill='none'/%3E%3C/svg%3E">
+<style>
+:root{
+  --bg:#F2F5F5; --paper:#FFFFFF; --ink:#10282C; --muted:#56696D; --line:#D9E2E3;
+  --teal:#00878F; --teal-d:#006A71; --amber:#FFC857; --amber-d:#B98300;
+  --code-bg:#0D2226; --code-ink:#D6E6E8; --code-hl:#1E474D;
+  --sans:"IBM Plex Sans Thai","Noto Sans Lao","Noto Sans Thai","Phetsarath OT","Saysettha OT","Sarabun","Leelawadee UI",system-ui,sans-serif;
+  --mono:"IBM Plex Mono",ui-monospace,"Cascadia Code",Consolas,monospace;
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+@media (prefers-reduced-motion:reduce){html{scroll-behavior:auto}*{transition:none!important}}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.7 var(--sans)}
+a{color:var(--teal-d)}
+code{font-family:var(--mono);font-size:.88em;background:#E6EEEF;border-radius:5px;padding:1px 6px;color:#0B4F55}
+button{font:inherit;color:inherit}
+:focus-visible{outline:3px solid var(--amber-d);outline-offset:2px;border-radius:6px}
+
+/* ---------- โครงหน้า ---------- */
+.app{display:grid;grid-template-columns:290px 1fr;min-height:100vh}
+.side{position:sticky;top:0;height:100vh;overflow:auto;background:var(--paper);border-right:1px solid var(--line);padding:18px 14px 30px}
+.brand{display:flex;gap:10px;align-items:center;text-decoration:none;color:var(--ink);padding:4px 6px 14px}
+.brand svg{flex:none}
+.brand b{display:block;font-size:17px;line-height:1.25}
+.brand span{font-size:12.5px;color:var(--muted)}
+.nav-top{display:flex;flex-direction:column;gap:2px;margin-bottom:10px}
+.side a.navi{display:flex;gap:8px;align-items:center;text-decoration:none;color:var(--ink);padding:6px 10px;border-radius:8px;font-size:14.5px;line-height:1.35}
+.side a.navi:hover{background:#EEF4F4}
+.side a.navi.on{background:#DDEFF0;font-weight:600}
+.side a.navi .ck{margin-left:auto;color:var(--teal);font-size:13px}
+.unit-h{display:flex;align-items:center;gap:8px;margin:16px 6px 4px;font-size:13px;font-weight:700;color:var(--muted)}
+.unit-h i{width:10px;height:10px;border-radius:50%;background:var(--u)}
+.unit-h small{font-weight:500;margin-left:auto;font-size:11.5px}
+.lang{display:flex;gap:4px;margin:14px 6px 0;font-size:13px;align-items:center;color:var(--muted)}
+.lang button{border:1px solid var(--line);background:#fff;border-radius:7px;padding:2px 9px;cursor:pointer}
+.lang button.on{background:var(--ink);color:#fff;border-color:var(--ink)}
+.sitelang{display:flex;gap:3px;margin:2px 4px 14px;padding:3px;background:#E8F0F0;border-radius:10px}
+.sitelang button{flex:1;border:0;background:transparent;border-radius:8px;padding:5px 4px;cursor:pointer;font-size:14px;line-height:1.3;color:var(--muted)}
+.sitelang button:hover{color:var(--ink)}
+.sitelang button[aria-pressed="true"]{background:var(--paper);color:var(--ink);font-weight:600;box-shadow:0 0 0 1px var(--line)}
+.lonote{margin:6px 8px 0;font-size:12.5px;line-height:1.45;color:var(--muted)}
+.burger{display:none}
+main{min-width:0;padding:28px clamp(16px,4vw,48px) 80px}
+.wrap{max-width:1040px;margin:0 auto}
+@media (max-width:900px){
+  .app{grid-template-columns:1fr}
+  .side{position:fixed;inset:0 25% 0 0;z-index:30;transform:translateX(-102%);transition:transform .2s;box-shadow:0 0 40px rgba(0,0,0,.2)}
+  .side.open{transform:none}
+  .burger{display:flex;position:sticky;top:0;z-index:20;align-items:center;gap:10px;background:var(--paper);border-bottom:1px solid var(--line);padding:8px 14px}
+  .burger button{border:1px solid var(--line);background:#fff;border-radius:8px;padding:4px 12px;cursor:pointer}
+  main{padding-top:16px}
+}
+
+/* ---------- ตัวอักษร ---------- */
+h1{font-size:clamp(26px,3.4vw,36px);line-height:1.25;margin:4px 0 10px;letter-spacing:-.01em}
+h2{font-size:22px;line-height:1.3;margin:42px 0 12px}
+h3{font-size:18px;margin:0 0 4px}
+p{margin:8px 0}
+.crumb{font-size:14px;color:var(--muted)}
+.crumb a{color:var(--muted)}
+.lead{font-size:17.5px;max-width:70ch}
+.goals{background:var(--paper);border:1px solid var(--line);border-left:5px solid var(--teal);border-radius:10px;padding:10px 18px;margin:16px 0}
+.goals ul{margin:4px 0;padding-left:20px}
+
+/* ---------- บล็อก ---------- */
+.canvas{background-color:#F9FBFB;background-image:radial-gradient(#D4DFE0 1px,transparent 1.2px);background-size:18px 18px;padding:18px;overflow:auto}
+.stack{display:flex;flex-direction:column;align-items:flex-start}
+.blk{--c:#888;--c3:rgba(0,0,0,.25);display:inline-flex;flex-direction:column;color:#fff;font:600 12.5px/1.25 var(--sans);position:relative;cursor:default;transition:filter .12s}
+.part{background:var(--c);border:1px solid var(--c3);display:flex;align-items:center;flex-wrap:nowrap;gap:5px;white-space:nowrap;padding:7px 10px;min-height:38px;position:relative}
+.blk.stack-b>.part:first-child,.blk.cap>.part:first-child{border-radius:6px 6px 6px 6px}
+.blk.c-b>.part.head{border-radius:6px 6px 0 6px}
+.blk.c-b>.part.mid{border-radius:0 6px 6px 0}
+.blk.c-b>.part.foot{border-radius:0 0 6px 6px;min-height:16px;padding:0}
+.blk.hat>.part.head{border-radius:26px 26px 6px 0;padding-top:12px}
+.mouth{display:flex}
+.mouth .arm{width:16px;background:var(--c);border-left:1px solid var(--c3);flex:none}
+.mouth .inner{padding:3px 0 3px 2px;min-height:28px;min-width:60px}
+.blk.stack-b+.blk,.mouth .inner>.blk+.blk{margin-top:-1px}
+.blk.rep>.part{border-radius:999px;min-height:30px;padding:4px 10px}
+.blk.bool>.part{border:none;min-height:30px;padding:4px 18px;clip-path:polygon(12px 0,calc(100% - 12px) 0,100% 50%,calc(100% - 12px) 100%,12px 100%,0 50%)}
+.lbl{white-space:nowrap}
+.fld{background:#fff;color:#2b2b2b;border-radius:999px;padding:1px 9px;min-width:26px;text-align:center;font-weight:500;border:1px solid rgba(0,0,0,.12)}
+.dd{background:rgba(0,0,0,.16);border:1px solid rgba(0,0,0,.12);border-radius:7px;padding:1px 7px;white-space:nowrap}
+.dd::after{content:" ▾";font-size:10px;opacity:.8}
+.slot{display:inline-block;width:40px;height:22px;border-radius:999px;background:#fff;border:1px solid rgba(0,0,0,.15)}
+.slot.b{background:rgba(0,0,0,.2);border:none;clip-path:polygon(9px 0,calc(100% - 9px) 0,100% 50%,calc(100% - 9px) 100%,9px 100%,0 50%)}
+.ico{display:inline-grid;place-items:center;width:22px;height:22px;border-radius:6px;background:rgba(255,255,255,.18);font-size:12px;margin-right:2px}
+.blk.hl>.part,.blk.hl>.mouth .arm{filter:brightness(1.08);box-shadow:0 0 0 3px var(--amber) inset}
+.blk.hl.rep>.part,.blk.hl.bool>.part{box-shadow:0 0 0 3px var(--amber)}
+.blk.hl.bool>.part{filter:drop-shadow(0 0 2px var(--amber)) brightness(1.12)}
+
+/* ---------- สะพาน บล็อก ↔ โค้ด ---------- */
+.bridge{display:grid;grid-template-columns:minmax(0,1.2fr) minmax(0,1fr);border-radius:14px;overflow:hidden;border:1px solid #C9D6D8;background:var(--code-bg);margin:14px 0 8px;box-shadow:0 10px 30px -18px rgba(16,40,44,.5)}
+.bridge .canvas{border-right:1px solid #C9D6D8;min-height:120px}
+.codebox{position:relative;min-width:0;display:flex;flex-direction:column}
+.codebar{display:flex;align-items:center;gap:8px;padding:8px 12px;color:#9DB8BC;font:500 12.5px var(--mono);border-bottom:1px solid #1C3A3F}
+.codebar .sp{flex:1}
+.codebar button{background:#16343A;border:1px solid #2A5158;color:#D6E6E8;border-radius:7px;padding:3px 10px;cursor:pointer;font:500 12.5px var(--sans)}
+.codebar button:hover{background:#1E474D}
+pre.code{margin:0;padding:10px 0 14px;overflow:auto;font:13.5px/1.6 var(--mono);color:var(--code-ink);flex:1}
+pre.code .ln{display:block;padding:0 14px 0 0;white-space:pre;border-left:3px solid transparent}
+pre.code .ln::before{content:attr(data-n);display:inline-block;width:3.2em;padding-right:1em;text-align:right;color:#4E6F74;user-select:none}
+pre.code .ln.hl{background:var(--code-hl);border-left-color:var(--amber)}
+pre.code .ln.hl::before{color:var(--amber)}
+.t-kw{color:#FF9E64}.t-pp{color:#C79BF2}.t-num{color:#F7C873}.t-str{color:#A8E39A}.t-mr{color:#7DE3D1}.t-cm{color:#6E8B90}.t-ty{color:#82B8FF}
+.bridge-cap{display:flex;gap:10px;align-items:baseline;flex-wrap:wrap}
+.bridge-cap h3{margin:0}
+.hint{color:var(--muted);font-size:14px}
+@media (max-width:760px){.bridge{grid-template-columns:1fr}.bridge .canvas{border-right:0;border-bottom:1px solid #C9D6D8}}
+
+.notes{list-style:none;padding:0;margin:8px 0 0;display:grid;gap:6px}
+.notes li{display:grid;grid-template-columns:minmax(0,auto) 1fr;gap:4px 12px;align-items:baseline;background:var(--paper);border:1px solid var(--line);border-radius:10px;padding:8px 12px}
+.notes li button.chip{font:500 12.5px var(--mono);background:#E6EEEF;border:1px solid #CFDDDF;border-radius:6px;padding:2px 8px;cursor:pointer;text-align:left;max-width:min(52vw,520px);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#0B4F55}
+.notes li button.chip:hover,.notes li button.chip.on{background:var(--amber);border-color:var(--amber-d);color:#3a2a00}
+@media (max-width:620px){.notes li{grid-template-columns:1fr}.notes li button.chip{max-width:100%}}
+
+/* ---------- การ์ดบล็อก ---------- */
+.bcards{display:grid;gap:12px}
+.bcard{background:var(--paper);border:1px solid var(--line);border-radius:12px;display:grid;grid-template-columns:minmax(0,1fr);overflow:hidden}
+.bcard .canvas{display:flex;align-items:center;padding:14px 16px;border-bottom:1px solid var(--line)}
+.bcard .info{padding:10px 18px 14px}
+.bcard .info h3{font-size:16.5px}
+.codeline{display:block;margin:6px 0;background:var(--code-bg);color:var(--code-ink);font:13px/1.55 var(--mono);padding:7px 10px;border-radius:8px;white-space:pre-wrap;word-break:break-word}
+.params{margin:6px 0 0;padding:0;list-style:none;font-size:14.5px}
+.params li{margin:3px 0}
+.params b{font-weight:600}
+.warn{background:#FFF4D6;border:1px solid #F0D58A;border-radius:8px;padding:6px 10px;font-size:14.5px;margin-top:8px}
+.warn::before{content:"ข้อควรรู้ · ";font-weight:700;color:#7A5600}
+details.vars{margin-top:8px;font-size:14px}
+details.vars summary{cursor:pointer;color:var(--teal-d);font-weight:600}
+table.vt{border-collapse:collapse;margin-top:6px;width:100%;font-size:13px}
+table.vt td,table.vt th{border-bottom:1px solid var(--line);padding:4px 6px;text-align:left;vertical-align:top}
+table.vt td code{white-space:pre-wrap;word-break:break-word}
+@media (max-width:760px){.bcard{grid-template-columns:1fr}}
+
+/* ---------- ลองทำ / แบบทดสอบ ---------- */
+.tips{background:var(--paper);border:1px solid var(--line);border-radius:12px;padding:6px 18px}
+.tips ul{padding-left:20px;margin:8px 0}
+.task{background:var(--paper);border:1px solid var(--line);border-radius:12px;padding:12px 16px;margin:10px 0}
+.task .num{display:inline-grid;place-items:center;width:26px;height:26px;border-radius:50%;background:var(--teal);color:#fff;font-weight:700;font-size:14px;margin-right:8px}
+.btn{border:1px solid var(--teal);background:#fff;color:var(--teal-d);border-radius:9px;padding:5px 14px;cursor:pointer;font-weight:600;font-size:14.5px}
+.btn:hover{background:#E9F5F5}
+.btn.solid{background:var(--teal);color:#fff}
+.answer{margin-top:8px;background:#EAF6EF;border:1px solid #BFE2CC;border-radius:8px;padding:6px 10px;font-size:15px}
+.quiz{display:grid;gap:12px}
+.q{background:var(--paper);border:1px solid var(--line);border-radius:12px;padding:12px 16px}
+.q .qt{font-weight:600}
+.q label{display:flex;gap:8px;align-items:flex-start;padding:5px 8px;border-radius:8px;cursor:pointer}
+.q label:hover{background:#F2F7F7}
+.q input{margin-top:6px;accent-color:var(--teal)}
+.q .fb{margin-top:6px;font-size:15px;border-radius:8px;padding:6px 10px;display:none}
+.q.right .fb{display:block;background:#EAF6EF;border:1px solid #BFE2CC}
+.q.wrong .fb{display:block;background:#FDEDEB;border:1px solid #F3C4BE}
+.done-banner{display:none;margin-top:12px;background:var(--ink);color:#fff;border-radius:12px;padding:10px 16px}
+.done-banner.show{display:block}
+.pager{display:flex;justify-content:space-between;gap:12px;margin-top:40px;flex-wrap:wrap}
+.pager a{flex:1;min-width:220px;text-decoration:none;color:var(--ink);background:var(--paper);border:1px solid var(--line);border-radius:12px;padding:10px 14px}
+.pager a small{display:block;color:var(--muted)}
+.pager a.next{text-align:right}
+
+/* ---------- หน้าแรก ---------- */
+.hero h1{font-size:clamp(30px,4.6vw,48px);margin-top:10px}
+.hero .lead{font-size:18.5px}
+.units{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:12px;margin-top:14px}
+.ucard{display:block;text-decoration:none;color:var(--ink);background:var(--paper);border:1px solid var(--line);border-top:5px solid var(--u);border-radius:12px;padding:12px 16px}
+.ucard .n{font:600 13px var(--mono);color:var(--muted)}
+.ucard b{display:block;font-size:17.5px;margin:2px 0}
+.ucard span{font-size:14px;color:var(--muted)}
+.ucard.soon{opacity:.65}
+.ucard ol{margin:8px 0 0;padding-left:20px;font-size:14px}
+.steps{counter-reset:s;list-style:none;padding:0;display:grid;gap:10px}
+.steps>li{counter-increment:s;background:var(--paper);border:1px solid var(--line);border-radius:12px;padding:10px 16px 10px 56px;position:relative}
+.steps>li::before{content:counter(s);position:absolute;left:14px;top:10px;width:28px;height:28px;border-radius:50%;background:var(--ink);color:#fff;display:grid;place-items:center;font-weight:700}
+.legend{display:flex;gap:16px;flex-wrap:wrap;font-size:14px;color:var(--muted);margin:8px 0}
+.legend span{display:flex;gap:6px;align-items:center}
+
+/* ---------- ตารางอ้างอิง ---------- */
+.search{width:100%;max-width:420px;border:1px solid var(--line);border-radius:10px;padding:8px 12px;font:inherit;background:#fff}
+.reftab{display:grid;gap:10px;margin-top:12px}
+.refcat h2{display:flex;gap:10px;align-items:center}
+.refcat h2 i{width:14px;height:14px;border-radius:4px;background:var(--u)}
+footer{margin-top:60px;font-size:13.5px;color:var(--muted);border-top:1px solid var(--line);padding-top:14px}
+</style>
+</head>
+<body>
+<div class="burger"><button id="openNav" aria-label="เปิดเมนู">☰ บทเรียน</button><b id="burgerTitle">Mini R4: จากบล็อกสู่โค้ด</b></div>
+<div class="app">
+  <nav class="side" id="side" aria-label="บทเรียน"></nav>
+  <main><div class="wrap" id="view"></div></main>
+</div>
+<script id="data" type="application/json">__DATA__</script>
+<script>
+'use strict';
+let D = null;
+const INLINE = document.getElementById('data').textContent.trim();
+// หน้าไหนฝังไฟล์ในตัวเฟรม (เช่นตัวแสดงผลของ claude.ai) จะดาวน์โหลดไฟล์ไม่ได้ จึงซ่อนปุ่ม .ino
+const FRAMED = (() => { try { return window.self !== window.top; } catch (e) { return true; } })();
+function fromRecords(recs) {
+  const d = { units: [], lessons: [], blocks: {} };
+  for (const r of recs) { if (r.kind === 'units') d.units = r.units; else if (r.kind === 'lesson') d.lessons.push(r.lesson); else if (r.kind === 'block') d.blocks[r.type] = r.block; }
+  return d;
+}
+const $ = (s, el = document) => el.querySelector(s);
+const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const store = {
+  get(k, d) { try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : d; } catch (e) { return d; } },
+  set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} }
+};
+// ---------------- ภาษาของเว็บ (ไทย / English / ລາວ) ----------------
+const SITES = [['th', 'ไทย'], ['en', 'English'], ['lo', 'ລາວ']];
+const I18N = {
+  th: {
+    brand: 'Mini R4: จากบล็อกสู่โค้ด', brandSub: 'MATRIXblock คู่ Arduino', title: 'Mini R4: จากบล็อกสู่โค้ด — เรียน MATRIXblock คู่ Arduino',
+    openNav: 'เปิดเมนู', navBtn: '☰ บทเรียน', navLabel: 'บทเรียน', langGroup: 'ภาษาของเว็บ',
+    home: 'หน้าแรก', start: 'เริ่มต้น: บล็อก → Arduino IDE', ref: 'ตารางบล็อก ↔ โค้ด',
+    unit: n => 'หน่วยที่ ' + n, soon: 'กำลังทำ', passed: 'ผ่านแบบทดสอบแล้ว', blockLang: 'ป้ายบล็อก', loNote: '',
+    copy: 'คัดลอก', copied: 'คัดลอกแล้ว', selected: 'เลือกโค้ดแล้ว กด Ctrl+C', codeAria: 'โค้ด Arduino',
+    menuOpts: 'ตัวเลือกในเมนูของบล็อก → โค้ด', goals: 'เรียนจบบทนี้แล้ว',
+    secBlocks: 'บล็อกในบทนี้', secBlocksSub: 'แต่ละบล็อกกลายเป็นโค้ดแบบนี้ (ได้จากตัวสร้างโค้ดของโปรแกรม MATRIXblock เอง)',
+    secEx: 'ตัวอย่าง', secExSub: 'ชี้ (หรือแตะ) ที่บล็อก เพื่อดูว่าเป็นโค้ดบรรทัดไหน ชี้ที่โค้ดก็ได้เช่นกัน', hlLine: 'ไฮไลต์บรรทัดนี้',
+    secIde: 'เขียนเองใน Arduino IDE', secTry: 'ลองทำ', secTrySub: 'ลองต่อบล็อกใน MATRIXblock ก่อน แล้วค่อยเปิดเฉลยเทียบโค้ด',
+    showAns: 'ดูเฉลย', hideAns: 'ซ่อนเฉลย', secQuiz: 'เช็กความเข้าใจ', doneBanner: 'ผ่านบทนี้แล้ว ✓ ติ๊กถูกในเมนูด้านข้างแล้ว',
+    right: 'ถูกต้อง', wrong: 'ยังไม่ใช่', prev: '← บทก่อน', next: 'บทถัดไป →',
+    heroCrumb: 'สื่อการสอน MATRIX Mini R4 · MATRIXblock + Arduino C++', heroH1: 'บล็อกหนึ่งตัว คือโค้ดหนึ่งท่อน',
+    heroLead: 'ทุกครั้งที่ต่อบล็อกใน MATRIXblock โปรแกรมเขียนโค้ด Arduino ให้เราอยู่ด้านขวา เว็บนี้พาอ่านโค้ดนั้นทีละบล็อก จนเขียนเองได้ด้วย <code>#include "MatrixMiniR4.h"</code> ลองชี้ที่บล็อกด้านล่างดู',
+    demoHint: 'ชี้ที่บล็อก if หรือบล็อกไฟ แล้วดูบรรทัดสีเหลือง',
+    legend: 'โค้ดทุกตัวอย่างสร้างจากโปรแกรม MATRIXblock Mini R4 v1.1.0 และคอมไพล์ผ่านกับไลบรารี MatrixMiniR4 1.2.6 แล้ว',
+    units: 'หน่วยการเรียน', nLessons: n => n + ' บท', how: 'เรียนอย่างไร',
+    steps: '<li><b>ต่อบล็อกใน MATRIXblock</b> ตามตัวอย่าง อัปโหลดลงบอร์ด ดูว่าหุ่นทำอะไร</li><li><b>อ่านโค้ดด้านขวา</b> ชี้บล็อกในเว็บนี้เพื่อจับคู่บล็อกกับบรรทัด</li><li><b>แก้ตัวเลขในโค้ด</b> ที่ Arduino IDE แล้วอัปโหลดเอง (ดูหน้า <a href="#start">เริ่มต้น</a>)</li><li><b>ทำแบบฝึก “ลองทำ”</b> และตอบคำถามท้ายบทให้ผ่าน</li>',
+    startHtml: '<h1>เริ่มต้น: จากบล็อกไป Arduino IDE</h1><p class="lead">ใช้สองโปรแกรมคู่กัน: MATRIXblock สำหรับต่อบล็อกและดูโค้ด และ Arduino IDE สำหรับแก้โค้ดเองแล้วอัปโหลด</p>' +
+      '<h2>เตรียม Arduino IDE (ครั้งเดียว)</h2><ol class="steps"><li><b>ติดตั้งบอร์ด</b> Tools → Board → Boards Manager ค้นคำว่า <code>arduino r4</code> ติดตั้ง <b>Arduino UNO R4 Boards</b> (ทดสอบกับรุ่น 1.6.0)</li><li><b>ติดตั้งไลบรารี</b> Sketch → Include Library → Manage Libraries ค้นคำว่า <code>MatrixMiniR4</code> ติดตั้งของ KKITC (ทดสอบกับรุ่น 1.2.6)</li><li><b>เลือกบอร์ด</b> Tools → Board → <b>Arduino UNO R4 WiFi</b> และเลือกพอร์ต COM ของหุ่น</li></ol>' +
+      '<h2>ย้ายโค้ดจากบล็อกไป Arduino IDE</h2><ol class="steps"><li>ใน MATRIXblock ดูโค้ดที่แผงด้านขวา (ถ้าซ่อนอยู่ กดลูกศรขอบจอขวาเพื่อเปิด)</li><li>คัดลอกโค้ดทั้งหมด หรือกดปุ่ม <b>คัดลอก</b> / <b>.ino</b> ในเว็บนี้</li><li>ใน Arduino IDE กด File → New Sketch ลบของเดิม แล้ววางโค้ด</li><li>กด ✓ (Verify) เพื่อตรวจ แล้วกด → (Upload) ลงบอร์ด</li><li>โปรแกรมที่ส่งข้อความ Serial ให้เปิด Tools → Serial Monitor ตั้งความเร็ว <b>9600 baud</b> ให้ตรงกับบล็อก R4 Begin</li></ol>' +
+      '<h2>ทุกโปรแกรมมีโครงเดียวกัน</h2><p>บรรทัดแรกต้องเป็น <code>#include "MatrixMiniR4.h"</code> แล้วมี <code>setup()</code> กับ <code>loop()</code> โดยใน <code>setup()</code> ต้องมี <code>MiniR4.begin();</code> ก่อนคำสั่งอื่นเสมอ</p>',
+    startTitle: 'เริ่มต้น',
+    refLead: 'ทุกบล็อกที่ใช้ในบทเรียน พร้อมโค้ดที่โปรแกรมสร้างจริง (ค่าเริ่มต้นของบล็อก) เปิด “ตัวเลือกในเมนู” เพื่อดูโค้ดของแต่ละตัวเลือก',
+    search: 'ค้นหา เช่น OLED, delay, Move, map', later: '(สำหรับบทเรียนถัดไป)',
+    notFound: 'ไม่พบบล็อกที่ตรงกับคำค้น ลองพิมพ์ชื่อคำสั่งในโค้ด เช่น <code>setColor</code>',
+    footer: 'สื่อการสอนโดย ครูแบงก์ (KRUBANK) · ชื่อ MATRIX, MATRIXblock และ Mini R4 เป็นของ MATRIX Robotics เว็บนี้เป็นสื่อประกอบการเรียน ไม่ใช่เอกสารทางการ',
+    loadErr: '<h1>เปิดบทเรียนไม่ได้</h1><p>โหลดไฟล์ <code>data.json</code> ไม่สำเร็จ ถ้าเปิดไฟล์จากเครื่องโดยตรง ให้ใช้ไฟล์รุ่น offline แทน</p>'
+  },
+  en: {
+    brand: 'Mini R4: From Blocks to Code', brandSub: 'MATRIXblock with Arduino', title: 'Mini R4: From Blocks to Code — learn MATRIXblock with Arduino',
+    openNav: 'Open menu', navBtn: '☰ Lessons', navLabel: 'Lessons', langGroup: 'Site language',
+    home: 'Home', start: 'Getting started: blocks → Arduino IDE', ref: 'Block ↔ code table',
+    unit: n => 'Unit ' + n, soon: 'coming soon', passed: 'Quiz passed', blockLang: 'Block labels', loNote: '',
+    copy: 'Copy', copied: 'Copied', selected: 'Code selected, press Ctrl+C', codeAria: 'Arduino code',
+    menuOpts: 'Block menu options → code', goals: 'After this lesson you can',
+    secBlocks: 'Blocks in this lesson', secBlocksSub: 'This is the code each block becomes (taken from MATRIXblock’s own code generator)',
+    secEx: 'Examples', secExSub: 'Point at (or tap) a block to see which lines of code it makes. Pointing at the code works too.', hlLine: 'Highlight this line',
+    secIde: 'Writing it yourself in Arduino IDE', secTry: 'Try it', secTrySub: 'Build it in MATRIXblock first, then open the answer and compare the code',
+    showAns: 'Show answer', hideAns: 'Hide answer', secQuiz: 'Check your understanding', doneBanner: 'Lesson passed ✓ It is ticked in the side menu.',
+    right: 'Correct', wrong: 'Not yet', prev: '← Previous', next: 'Next →',
+    heroCrumb: 'MATRIX Mini R4 teaching materials · MATRIXblock + Arduino C++', heroH1: 'Every block is a piece of code',
+    heroLead: 'Every time you snap blocks together in MATRIXblock, the app writes Arduino code for you on the right. This site walks you through that code block by block, until you can write it yourself with <code>#include "MatrixMiniR4.h"</code>. Try pointing at the blocks below.',
+    demoHint: 'Point at the if block or the light block and watch the yellow lines',
+    legend: 'The code of every example was generated by MATRIXblock Mini R4 v1.1.0 and compiles with the MatrixMiniR4 1.2.6 library.',
+    units: 'Units', nLessons: n => n + ' lessons', how: 'How to learn',
+    steps: '<li><b>Build the blocks in MATRIXblock</b> following the example, upload them to the board and watch what the robot does</li><li><b>Read the code on the right</b> and point at blocks on this site to match each block to its lines</li><li><b>Change numbers in the code</b> in Arduino IDE and upload it yourself (see <a href="#start">Getting started</a>)</li><li><b>Do the “Try it” tasks</b> and pass the quiz at the end of the lesson</li>',
+    startHtml: '<h1>Getting started: from blocks to Arduino IDE</h1><p class="lead">Use two programs together: MATRIXblock to build blocks and see the code, and Arduino IDE to edit the code yourself and upload it.</p>' +
+      '<h2>Set up Arduino IDE (once)</h2><ol class="steps"><li><b>Install the board</b> Tools → Board → Boards Manager, search for <code>arduino r4</code> and install <b>Arduino UNO R4 Boards</b> (tested with 1.6.0)</li><li><b>Install the library</b> Sketch → Include Library → Manage Libraries, search for <code>MatrixMiniR4</code> and install the one by KKITC (tested with 1.2.6)</li><li><b>Choose the board</b> Tools → Board → <b>Arduino UNO R4 WiFi</b>, then choose the robot’s COM port</li></ol>' +
+      '<h2>Moving code from blocks to Arduino IDE</h2><ol class="steps"><li>In MATRIXblock, look at the code panel on the right (if it is hidden, click the arrow on the right edge of the screen)</li><li>Copy all the code, or press <b>Copy</b> / <b>.ino</b> on this site</li><li>In Arduino IDE choose File → New Sketch, delete what is there and paste the code</li><li>Press ✓ (Verify) to check it, then → (Upload) to send it to the board</li><li>For programs that send Serial messages, open Tools → Serial Monitor and set it to <b>9600 baud</b> to match the R4 Begin block</li></ol>' +
+      '<h2>Every program has the same frame</h2><p>The first line must be <code>#include "MatrixMiniR4.h"</code>, followed by <code>setup()</code> and <code>loop()</code>. Inside <code>setup()</code>, <code>MiniR4.begin();</code> must come before every other command.</p>',
+    startTitle: 'Getting started',
+    refLead: 'Every block used in the lessons, with the code the app really generates (using the block’s default values). Open “Block menu options” to see the code for each option.',
+    search: 'Search, e.g. OLED, delay, Move, map', later: '(for upcoming lessons)',
+    notFound: 'No block matches. Try the name of a command in the code, such as <code>setColor</code>.',
+    footer: 'Teaching material by Krubank (KRUBANK) · MATRIX, MATRIXblock and Mini R4 are names owned by MATRIX Robotics. This site is a learning aid, not official documentation.',
+    loadErr: '<h1>Could not open the lessons</h1><p>Loading <code>data.json</code> failed. If you opened the file straight from your computer, use the offline version instead.</p>'
+  },
+  lo: {
+    brand: 'Mini R4: ຈາກບລັອກສູ່ໂຄ້ດ', brandSub: 'MATRIXblock ຄູ່ກັບ Arduino', title: 'Mini R4: ຈາກບລັອກສູ່ໂຄ້ດ — ຮຽນ MATRIXblock ຄູ່ກັບ Arduino',
+    openNav: 'ເປີດເມນູ', navBtn: '☰ ບົດຮຽນ', navLabel: 'ບົດຮຽນ', langGroup: 'ພາສາຂອງເວັບ',
+    home: 'ໜ້າຫຼັກ', start: 'ເລີ່ມຕົ້ນ: ບລັອກ → Arduino IDE', ref: 'ຕາຕະລາງບລັອກ ↔ ໂຄ້ດ',
+    unit: n => 'ໜ່ວຍທີ ' + n, soon: 'ກຳລັງສ້າງ', passed: 'ຜ່ານແບບທົດສອບແລ້ວ', blockLang: 'ປ້າຍບລັອກ',
+    loNote: 'ໂປຣແກຣມ MATRIXblock ບໍ່ມີພາສາລາວ ປ້າຍບລັອກຈຶ່ງສະແດງເປັນພາສາອັງກິດ ຫຼື ໄທ',
+    copy: 'ສຳເນົາ', copied: 'ສຳເນົາແລ້ວ', selected: 'ເລືອກໂຄ້ດແລ້ວ ກົດ Ctrl+C', codeAria: 'ໂຄ້ດ Arduino',
+    menuOpts: 'ຕົວເລືອກໃນເມນູຂອງບລັອກ → ໂຄ້ດ', goals: 'ຮຽນຈົບບົດນີ້ແລ້ວ',
+    secBlocks: 'ບລັອກໃນບົດນີ້', secBlocksSub: 'ແຕ່ລະບລັອກກາຍເປັນໂຄ້ດແບບນີ້ (ໄດ້ຈາກຕົວສ້າງໂຄ້ດຂອງໂປຣແກຣມ MATRIXblock ເອງ)',
+    secEx: 'ຕົວຢ່າງ', secExSub: 'ຊີ້ (ຫຼື ແຕະ) ທີ່ບລັອກ ເພື່ອເບິ່ງວ່າເປັນໂຄ້ດແຖວໃດ ຊີ້ທີ່ໂຄ້ດກໍໄດ້ຄືກັນ', hlLine: 'ໄຮໄລທ໌ແຖວນີ້',
+    secIde: 'ຂຽນເອງໃນ Arduino IDE', secTry: 'ລອງເຮັດ', secTrySub: 'ລອງຕໍ່ບລັອກໃນ MATRIXblock ກ່ອນ ແລ້ວຈຶ່ງເປີດຄຳຕອບທຽບໂຄ້ດ',
+    showAns: 'ເບິ່ງຄຳຕອບ', hideAns: 'ເຊື່ອງຄຳຕອບ', secQuiz: 'ກວດຄວາມເຂົ້າໃຈ', doneBanner: 'ຜ່ານບົດນີ້ແລ້ວ ✓ ໝາຍຖືກໄວ້ໃນເມນູຂ້າງແລ້ວ',
+    right: 'ຖືກຕ້ອງ', wrong: 'ຍັງບໍ່ແມ່ນ', prev: '← ບົດກ່ອນ', next: 'ບົດຕໍ່ໄປ →',
+    heroCrumb: 'ສື່ການສອນ MATRIX Mini R4 · MATRIXblock + Arduino C++', heroH1: 'ບລັອກໜຶ່ງອັນ ຄືໂຄ້ດໜຶ່ງທ່ອນ',
+    heroLead: 'ທຸກເທື່ອທີ່ຕໍ່ບລັອກໃນ MATRIXblock ໂປຣແກຣມຈະຂຽນໂຄ້ດ Arduino ໃຫ້ເຮົາຢູ່ທາງຂວາ ເວັບນີ້ພາອ່ານໂຄ້ດນັ້ນເທື່ອລະບລັອກ ຈົນຂຽນເອງໄດ້ດ້ວຍ <code>#include "MatrixMiniR4.h"</code> ລອງຊີ້ທີ່ບລັອກຂ້າງລຸ່ມເບິ່ງ',
+    demoHint: 'ຊີ້ທີ່ບລັອກ if ຫຼື ບລັອກໄຟ ແລ້ວເບິ່ງແຖວສີເຫຼືອງ',
+    legend: 'ໂຄ້ດທຸກຕົວຢ່າງສ້າງຈາກໂປຣແກຣມ MATRIXblock Mini R4 v1.1.0 ແລະ ຄອມພາຍຜ່ານກັບຫ້ອງສະໝຸດ MatrixMiniR4 1.2.6 ແລ້ວ',
+    units: 'ໜ່ວຍການຮຽນ', nLessons: n => n + ' ບົດ', how: 'ຮຽນແນວໃດ',
+    steps: '<li><b>ຕໍ່ບລັອກໃນ MATRIXblock</b> ຕາມຕົວຢ່າງ ອັບໂຫຼດລົງບອດ ເບິ່ງວ່າຫຸ່ນຍົນເຮັດຫຍັງ</li><li><b>ອ່ານໂຄ້ດທາງຂວາ</b> ຊີ້ບລັອກໃນເວັບນີ້ເພື່ອຈັບຄູ່ບລັອກກັບແຖວໂຄ້ດ</li><li><b>ແກ້ຕົວເລກໃນໂຄ້ດ</b> ທີ່ Arduino IDE ແລ້ວອັບໂຫຼດເອງ (ເບິ່ງໜ້າ <a href="#start">ເລີ່ມຕົ້ນ</a>)</li><li><b>ເຮັດແບບຝຶກ “ລອງເຮັດ”</b> ແລະ ຕອບຄຳຖາມທ້າຍບົດໃຫ້ຜ່ານ</li>',
+    startHtml: '<h1>ເລີ່ມຕົ້ນ: ຈາກບລັອກໄປ Arduino IDE</h1><p class="lead">ໃຊ້ສອງໂປຣແກຣມຄູ່ກັນ: MATRIXblock ສຳລັບຕໍ່ບລັອກ ແລະ ເບິ່ງໂຄ້ດ ແລະ Arduino IDE ສຳລັບແກ້ໂຄ້ດເອງແລ້ວອັບໂຫຼດ</p>' +
+      '<h2>ກຽມ Arduino IDE (ເທື່ອດຽວ)</h2><ol class="steps"><li><b>ຕິດຕັ້ງບອດ</b> Tools → Board → Boards Manager ຄົ້ນຫາຄຳວ່າ <code>arduino r4</code> ຕິດຕັ້ງ <b>Arduino UNO R4 Boards</b> (ທົດສອບກັບລຸ້ນ 1.6.0)</li><li><b>ຕິດຕັ້ງຫ້ອງສະໝຸດ</b> Sketch → Include Library → Manage Libraries ຄົ້ນຫາຄຳວ່າ <code>MatrixMiniR4</code> ຕິດຕັ້ງຂອງ KKITC (ທົດສອບກັບລຸ້ນ 1.2.6)</li><li><b>ເລືອກບອດ</b> Tools → Board → <b>Arduino UNO R4 WiFi</b> ແລະ ເລືອກພອດ COM ຂອງຫຸ່ນຍົນ</li></ol>' +
+      '<h2>ຍ້າຍໂຄ້ດຈາກບລັອກໄປ Arduino IDE</h2><ol class="steps"><li>ໃນ MATRIXblock ເບິ່ງໂຄ້ດທີ່ແຖບທາງຂວາ (ຖ້າເຊື່ອງຢູ່ ກົດລູກສອນທີ່ຂອບຈໍຂວາເພື່ອເປີດ)</li><li>ສຳເນົາໂຄ້ດທັງໝົດ ຫຼື ກົດປຸ່ມ <b>ສຳເນົາ</b> / <b>.ino</b> ໃນເວັບນີ້</li><li>ໃນ Arduino IDE ກົດ File → New Sketch ລຶບຂອງເດີມອອກ ແລ້ວວາງໂຄ້ດ</li><li>ກົດ ✓ (Verify) ເພື່ອກວດ ແລ້ວກົດ → (Upload) ລົງບອດ</li><li>ໂປຣແກຣມທີ່ສົ່ງຂໍ້ຄວາມ Serial ໃຫ້ເປີດ Tools → Serial Monitor ຕັ້ງຄວາມໄວ <b>9600 baud</b> ໃຫ້ກົງກັບບລັອກ R4 Begin</li></ol>' +
+      '<h2>ທຸກໂປຣແກຣມມີໂຄງດຽວກັນ</h2><p>ແຖວທຳອິດຕ້ອງເປັນ <code>#include "MatrixMiniR4.h"</code> ແລ້ວມີ <code>setup()</code> ກັບ <code>loop()</code> ໂດຍໃນ <code>setup()</code> ຕ້ອງມີ <code>MiniR4.begin();</code> ກ່ອນຄຳສັ່ງອື່ນສະເໝີ</p>',
+    startTitle: 'ເລີ່ມຕົ້ນ',
+    refLead: 'ທຸກບລັອກທີ່ໃຊ້ໃນບົດຮຽນ ພ້ອມໂຄ້ດທີ່ໂປຣແກຣມສ້າງແທ້ (ຄ່າເລີ່ມຕົ້ນຂອງບລັອກ) ເປີດ “ຕົວເລືອກໃນເມນູ” ເພື່ອເບິ່ງໂຄ້ດຂອງແຕ່ລະຕົວເລືອກ',
+    search: 'ຄົ້ນຫາ ເຊັ່ນ OLED, delay, Move, map', later: '(ສຳລັບບົດຮຽນຕໍ່ໄປ)',
+    notFound: 'ບໍ່ພົບບລັອກທີ່ກົງກັບຄຳຄົ້ນ ລອງພິມຊື່ຄຳສັ່ງໃນໂຄ້ດ ເຊັ່ນ <code>setColor</code>',
+    footer: 'ສື່ການສອນໂດຍ ຄູແບງກ໌ (KRUBANK) · ຊື່ MATRIX, MATRIXblock ແລະ Mini R4 ເປັນຂອງ MATRIX Robotics ເວັບນີ້ເປັນສື່ປະກອບການຮຽນ ບໍ່ແມ່ນເອກະສານທາງການ',
+    loadErr: '<h1>ເປີດບົດຮຽນບໍ່ໄດ້</h1><p>ໂຫຼດໄຟລ໌ <code>data.json</code> ບໍ່ສຳເລັດ ຖ້າເປີດໄຟລ໌ຈາກເຄື່ອງໂດຍກົງ ໃຫ້ໃຊ້ໄຟລ໌ລຸ້ນ offline ແທນ</p>'
+  }
+};
+// ภาษาเริ่มต้น: ?lang=xx ในลิงก์ > ที่เคยเลือกไว้ > เครื่องตั้งภาษาลาว > ไทย
+let SITE = (() => {
+  const ok = v => SITES.some(s => s[0] === v);
+  try { const q = new URLSearchParams(location.search).get('lang'); if (ok(q)) { store.set('mbr4-site', q); return q; } } catch (e) {}
+  const s = store.get('mbr4-site', null); if (ok(s)) return s;
+  const nav = (navigator.languages || [navigator.language || '']).map(x => String(x).slice(0, 2).toLowerCase());
+  return nav.includes('lo') && !nav.includes('th') ? 'lo' : 'th';
+})();
+const U = k => I18N[SITE][k];
+// ข้อมูลหลักเป็นภาษาไทย คำแปลวางทับเฉพาะข้อความ (โค้ด บล็อก และลำดับคำตอบคงเดิม)
+let RAW = null;
+function localize(lang) {
+  const units = RAW.units.map(u => Object.assign({}, u, (u.tr && u.tr[lang]) || {}));
+  const lessons = RAW.lessons.map(l => {
+    const t = l.tr && l.tr[lang];
+    if (!t) return l;
+    return Object.assign({}, l, {
+      title: t.title, intro: t.intro, goals: t.goals, arduino: t.arduino,
+      examples: l.examples.map((e, i) => Object.assign({}, e, { title: t.examples[i].title, desc: t.examples[i].desc, notes: (e.notes || []).map((n, j) => [n[0], t.examples[i].notes[j]]) })),
+      tries: (l.tries || []).map((x, i) => Object.assign({}, x, { task: t.tries[i].task, answer: t.tries[i].answer })),
+      quiz: (l.quiz || []).map((q, i) => Object.assign({}, q, { q: t.quiz[i].q, choices: t.quiz[i].choices, why: t.quiz[i].why }))
+    });
+  });
+  const blocks = {};
+  for (const k in RAW.blocks) { const b = RAW.blocks[k], t = b.text && b.text[lang]; blocks[k] = t ? Object.assign({}, b, t) : b; }
+  return { units, lessons, blocks };
+}
+function applyStatic() {
+  document.documentElement.lang = SITE;
+  const ob = $('#openNav'); ob.textContent = U('navBtn'); ob.setAttribute('aria-label', U('openNav'));
+  $('#burgerTitle').textContent = U('brand');
+  $('#side').setAttribute('aria-label', U('navLabel'));
+}
+function setSite(lang) {
+  SITE = lang; store.set('mbr4-site', lang);
+  applyStatic();
+  if (RAW) { D = localize(lang); route(true); }
+}
+let LANG = store.get('mbr4-lang', 'en');
+let DONE = store.get('mbr4-done', {});
+const CAT = { core: ['R4 Core', '#00878F'], move: ['Movement', '#fb59ce'], looks: ['Looks', '#9966FF'], serial: ['Serial', '#ed9979'], sensing: ['Sensing', '#5cb1d6'], control: ['Control', '#FFAB19'], ops: ['Operators', '#40BF4A'], vars: ['Variables', '#FF8C1A'] };
+
+// ---------------- วาดบล็อก ----------------
+const ICON = t => /ddc_/.test(t) ? '◎' : /Buzzer/.test(t) ? '♪' : /OLED/.test(t) ? '▭' : /RGB/.test(t) ? '✦' : /_RC/.test(t) ? '⟲' : /_M|ENC/.test(t) ? '⚙' : /motion/.test(t) ? '✥' : /color/i.test(t) ? '◍' : /aser/.test(t) ? '⦿' : /Serial/.test(t) ? '⇄' : /Grayscale|Pot|AIget|DIget|DOset/.test(t) ? '⌁' : /control_repeat|forever/.test(t) ? '↻' : '▣';
+function isShadowValue(b) { return b.shadow && (b.type === 'math_number' || b.type === 'text' || b.type === 'math_whole_number' || b.type === 'math_integer' || b.type === 'math_angle'); }
+function renderItems(items, node) {
+  const frag = document.createDocumentFragment();
+  for (const it of items) {
+    let el;
+    if (it.k === 't') { el = document.createElement('span'); el.className = 'lbl'; el.textContent = it.t; }
+    else if (it.k === 'dd' || it.k === 'var') { el = document.createElement('span'); el.className = 'dd'; el.textContent = it.t; }
+    else if (it.k === 'in') { el = document.createElement('span'); el.className = 'fld'; el.textContent = it.t; }
+    else if (it.k === 'icon') { el = document.createElement('span'); el.className = 'ico'; el.textContent = ICON(node.type); el.setAttribute('aria-hidden', 'true'); }
+    else if (it.k === 'empty') { el = document.createElement('span'); el.className = 'slot' + (it.bool ? ' b' : ''); }
+    else if (it.k === 'val') {
+      const b = it.b;
+      if (isShadowValue(b)) {
+        const inner = b.rows[0] && b.rows[0].items.find(x => x.k === 'in' || x.k === 't');
+        el = document.createElement('span'); el.className = 'fld'; el.textContent = inner ? inner.t : '';
+        if (b.id) el.dataset.id = b.id;
+      } else if (b.shadow) {
+        const dd = b.rows[0] && b.rows[0].items.find(x => x.k === 'dd');
+        el = document.createElement('span'); el.className = 'dd'; el.textContent = dd ? dd.t : '';
+      } else el = renderBlock(b);
+    }
+    if (el) frag.appendChild(el);
+  }
+  return frag;
+}
+function renderBlock(node) {
+  const el = document.createElement('div');
+  const isC = node.rows.some(r => r.stmt);
+  const kind = node.shape === 'rep' ? 'rep' : node.shape === 'bool' ? 'bool' : node.shape === 'hat' ? 'hat c-b' : isC ? 'c-b' : node.shape === 'cap' ? 'cap' : 'stack-b';
+  el.className = 'blk ' + kind;
+  el.style.setProperty('--c', node.c);
+  if (node.c3) el.style.setProperty('--c3', node.c3);
+  if (node.id) el.dataset.id = node.id;
+  el.dataset.type = node.type;
+  let first = true;
+  for (let i = 0; i < node.rows.length; i++) {
+    const r = node.rows[i];
+    if (r.stmt) {
+      const m = document.createElement('div'); m.className = 'mouth';
+      m.innerHTML = '<div class="arm"></div>';
+      const inner = document.createElement('div'); inner.className = 'inner stack';
+      for (const kid of r.blocks) inner.appendChild(renderBlock(kid));
+      m.appendChild(inner); el.appendChild(m);
+      if (i === node.rows.length - 1) { const f = document.createElement('div'); f.className = 'part foot'; el.appendChild(f); }
+    } else {
+      const p = document.createElement('div');
+      p.className = 'part ' + (first ? 'head' : 'mid');
+      if (r.items.length === 1 && r.items[0].k === 'icon' && !first) { p.className = 'part foot'; }
+      else p.appendChild(renderItems(r.items, node));
+      el.appendChild(p);
+      first = false;
+    }
+  }
+  return el;
+}
+function renderStacks(stacks) {
+  const wrap = document.createElement('div'); wrap.className = 'stack';
+  for (const s of stacks) for (const n of s) wrap.appendChild(renderBlock(n));
+  return wrap;
+}
+
+// ---------------- ระบายสีโค้ด ----------------
+const KW = /\b(void|if|else|for|while|return|true|false|int|float|bool|const|unsigned|long|char|String|HIGH|LOW)\b/;
+function hiLine(s) {
+  if (/^\s*#/.test(s)) return '<span class="t-pp">' + esc(s) + '</span>';
+  let out = '', i = 0;
+  const re = /("(?:\\.|[^"\\])*")|(\/\/.*$)|(\b\d+(?:\.\d+)?\b)|(\bMiniR4\b(?:\.[A-Za-z_]\w*)*)|(\b(?:void|if|else|for|while|return|true|false)\b)|(\b(?:int|float|bool|String|unsigned|long|char)\b)|(\b[A-Z][A-Z0-9_]{2,}\b)/g;
+  let m;
+  while ((m = re.exec(s))) {
+    out += esc(s.slice(i, m.index));
+    const cls = m[1] ? 't-str' : m[2] ? 't-cm' : m[3] ? 't-num' : m[4] ? 't-mr' : m[5] ? 't-kw' : m[6] ? 't-ty' : 't-pp';
+    out += '<span class="' + cls + '">' + esc(m[0]) + '</span>';
+    i = m.index + m[0].length;
+  }
+  return out + esc(s.slice(i));
+}
+
+// ---------------- สะพาน บล็อก ↔ โค้ด ----------------
+function findNode(stacks, id) {
+  let hit = null;
+  const walk = n => { if (hit) return; if (n.id === id) { hit = n; return; } for (const r of n.rows) { for (const it of r.items || []) if (it.k === 'val') walk(it.b); for (const b of r.blocks || []) walk(b); } };
+  for (const s of stacks) for (const n of s) walk(n);
+  return hit;
+}
+function bridge(ex, opts = {}) {
+  const lines = ex.code.replace(/\n+$/, '').split('\n');
+  const box = document.createElement('div'); box.className = 'bridge';
+  const cv = document.createElement('div'); cv.className = 'canvas';
+  cv.appendChild(renderStacks(ex[LANG] || ex.en));
+  const cb = document.createElement('div'); cb.className = 'codebox';
+  cb.innerHTML = '<div class="codebar"><span>' + esc(opts.file || 'sketch.ino') + '</span><span class="sp"></span><button data-act="copy">' + U('copy') + '</button>' + (FRAMED ? '' : '<button data-act="dl">.ino</button>') + '</div>';
+  const pre = document.createElement('pre'); pre.className = 'code'; pre.tabIndex = 0;
+  pre.setAttribute('aria-label', U('codeAria'));
+  pre.innerHTML = lines.map((l, i) => '<span class="ln" data-n="' + (i + 1) + '">' + (hiLine(l) || ' ') + '</span>').join('');
+  cb.appendChild(pre);
+  box.append(cv, cb);
+  const lnEls = [...pre.querySelectorAll('.ln')];
+  const stacks = ex.en;
+  // ช่วงบรรทัดของแต่ละบล็อก (บล็อกค่าใช้บรรทัดของบล็อกแม่)
+  const rangeOf = el => {
+    while (el && el !== cv) {
+      if (el.classList && el.classList.contains('blk')) {
+        const id = el.dataset.id, t = el.dataset.type, extra = extraLines(t, el, lines);
+        if (ex.ranges[id]) return [[ex.ranges[id][0], ex.ranges[id][1]], ...extra];
+        if (extra.length) return extra;
+      }
+      el = el.parentElement;
+    }
+    return [];
+  };
+  function extraLines(type, el, L) {
+    const out = [];
+    const findAll = rx => L.forEach((l, i) => { if (rx.test(l)) out.push([i, i]); });
+    if (type === 'mini_setup') { findAll(/^void (setup|loop)\(\)|MiniR4\.begin\(\)|setBattCell|^\s*Serial\.begin/); }
+    if (type === 'mini_ddc_setting') findAll(/^#define ENABLE_DRIVEDC/);
+    if (/^data_/.test(type)) { const v = el.querySelector('.dd'); if (v) findAll(new RegExp('^float ' + v.textContent.replace(/\W/g, '') + ';')); }
+    return out;
+  }
+  const clear = () => { cv.querySelectorAll('.blk.hl').forEach(b => b.classList.remove('hl')); lnEls.forEach(l => l.classList.remove('hl')); };
+  const showRanges = rs => { for (const [a, b] of rs) for (let i = a; i <= b; i++) lnEls[i] && lnEls[i].classList.add('hl'); };
+  cv.addEventListener('mouseover', e => {
+    const b = e.target.closest('.blk'); clear(); if (!b) return;
+    const statement = b.classList.contains('rep') || b.classList.contains('bool') ? b.parentElement.closest('.blk:not(.rep):not(.bool)') || b : b;
+    statement.classList.add('hl'); if (statement !== b) b.classList.add('hl');
+    showRanges(rangeOf(b));
+  });
+  cv.addEventListener('mouseleave', clear);
+  cv.addEventListener('pointerdown', e => { if (e.pointerType !== 'mouse') { const b = e.target.closest('.blk'); clear(); if (b) { b.classList.add('hl'); showRanges(rangeOf(b)); } } });
+  const blockForLine = n => {
+    let best = null, size = 1e9;
+    for (const id in ex.ranges) { const [a, b] = ex.ranges[id]; if (n >= a && n <= b && b - a < size) { best = id; size = b - a; } }
+    return best;
+  };
+  pre.addEventListener('mouseover', e => {
+    const ln = e.target.closest('.ln'); clear(); if (!ln) return;
+    const n = lnEls.indexOf(ln), id = blockForLine(n);
+    if (!id) { ln.classList.add('hl'); return; }
+    const el = cv.querySelector('.blk[data-id="' + id + '"]'); if (el) el.classList.add('hl');
+    showRanges([ex.ranges[id]]);
+  });
+  pre.addEventListener('mouseleave', clear);
+  cb.querySelector('[data-act=copy]').onclick = async e => {
+    const btn = e.currentTarget;
+    try { await navigator.clipboard.writeText(ex.code); btn.textContent = U('copied'); }
+    catch (err) { const r = document.createRange(); r.selectNodeContents(pre); const s = getSelection(); s.removeAllRanges(); s.addRange(r); btn.textContent = U('selected'); }
+    setTimeout(() => btn.textContent = U('copy'), 1600);
+  };
+  if (!FRAMED) cb.querySelector('[data-act=dl]').onclick = () => {
+    const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([ex.code], { type: 'text/plain' }));
+    a.download = (opts.file || 'sketch.ino'); a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+  };
+  box.highlightText = txt => {
+    clear(); const i = lines.findIndex(l => l.includes(txt)); if (i < 0) return;
+    const id = blockForLine(i);
+    lnEls[i].classList.add('hl');
+    if (id) { const el = cv.querySelector('.blk[data-id="' + id + '"]'); if (el) el.classList.add('hl'); }
+    lnEls[i].scrollIntoView({ block: 'nearest' });
+  };
+  return box;
+}
+
+// ---------------- เมนูข้าง ----------------
+const lessonsByUnit = u => D.lessons.filter(l => l.unit === u);
+function renderSide(active) {
+  const s = $('#side');
+  let h = '<a class="brand" href="#home"><svg width="38" height="38" viewBox="0 0 64 64" aria-hidden="true"><rect x="4" y="12" width="28" height="20" rx="5" fill="#00878F"/><rect x="32" y="32" width="28" height="20" rx="5" fill="#10282C"/><path d="M32 22h7v20" stroke="#FFC857" stroke-width="5" fill="none"/></svg><span><b>' + U('brand') + '</b><span>' + U('brandSub') + '</span></span></a>';
+  h += '<div class="sitelang" role="group" aria-label="' + U('langGroup') + '">' + SITES.map(([k, n]) => '<button lang="' + k + '" data-site="' + k + '" aria-pressed="' + (k === SITE) + '">' + n + '</button>').join('') + '</div>';
+  h += '<div class="nav-top"><a class="navi' + (active === 'home' ? ' on' : '') + '" href="#home">' + U('home') + '</a><a class="navi' + (active === 'start' ? ' on' : '') + '" href="#start">' + U('start') + '</a><a class="navi' + (active === 'ref' ? ' on' : '') + '" href="#ref">' + U('ref') + '</a></div>';
+  for (const u of D.units) {
+    h += '<div class="unit-h" style="--u:' + u.color + '"><i></i>' + U('unit')(u.id) + ' ' + esc(u.title) + (u.soon ? '<small>' + U('soon') + '</small>' : '') + '</div>';
+    for (const l of lessonsByUnit(u.id)) {
+      h += '<a class="navi' + (active === l.id ? ' on' : '') + '" href="#' + l.id + '">' + esc(l.title.replace(/&lt;/g, '<').replace(/&gt;/g, '>')) + (DONE[l.id] ? '<span class="ck" title="' + U('passed') + '">✓</span>' : '') + '</a>';
+    }
+  }
+  h += '<div class="lang">' + U('blockLang') + ' <button data-l="en" class="' + (LANG === 'en' ? 'on' : '') + '">English</button><button data-l="th" class="' + (LANG === 'th' ? 'on' : '') + '">ไทย</button></div>' + (U('loNote') ? '<p class="lonote">' + U('loNote') + '</p>' : '');
+  s.innerHTML = h;
+  s.querySelectorAll('.lang button').forEach(b => b.onclick = () => { LANG = b.dataset.l; store.set('mbr4-lang', LANG); route(true); });
+  s.querySelectorAll('.sitelang button').forEach(b => b.onclick = () => { if (b.dataset.site !== SITE) { setSite(b.dataset.site); const nb = $('.sitelang button[data-site="' + SITE + '"]'); if (nb) nb.focus(); } });
+  s.querySelectorAll('a').forEach(a => a.addEventListener('click', () => s.classList.remove('open')));
+}
+$('#openNav').onclick = () => $('#side').classList.toggle('open');
+
+// ---------------- การ์ดบล็อก ----------------
+function blockCard(type) {
+  const b = D.blocks[type]; if (!b) return document.createElement('div');
+  const card = document.createElement('div'); card.className = 'bcard';
+  const cv = document.createElement('div'); cv.className = 'canvas';
+  cv.appendChild(renderBlock(b[LANG] || b.en));
+  const info = document.createElement('div'); info.className = 'info';
+  const line = b.value || (b.program.split('void loop()\n{\n')[1] || '').replace(/\n}\s*$/, '').replace(/^ {2}/gm, '').trim();
+  let h = '<h3>' + esc(b.name) + '</h3><p>' + b.desc + '</p>';
+  if (line && type !== 'mini_setup') h += '<code class="codeline">' + esc(line) + '</code>';
+  if (b.params && b.params.length) h += '<ul class="params">' + b.params.map(p => '<li><b>' + p[0] + '</b> — ' + p[1] + '</li>').join('') + '</ul>';
+  if (b.warn) h += '<div class="warn">' + b.warn + '</div>';
+  const vs = (b.variants || []).filter(v => v.rows.some(r => r[2]));
+  if (vs.length) {
+    h += '<details class="vars"><summary>' + U('menuOpts') + '</summary>';
+    for (const v of vs) h += '<table class="vt">' + v.rows.map(r => '<tr><td>' + esc(r[0]) + '</td><td><code>' + esc(r[2]) + '</code></td></tr>').join('') + '</table>';
+    h += '</details>';
+  }
+  info.innerHTML = h;
+  card.append(cv, info);
+  return card;
+}
+
+// ---------------- หน้าบทเรียน ----------------
+function lessonPage(les) {
+  const v = $('#view'); v.innerHTML = '';
+  const unit = D.units.find(u => u.id === les.unit);
+  const head = document.createElement('div');
+  head.innerHTML = '<div class="crumb"><a href="#home">' + U('home') + '</a> · ' + U('unit')(unit.id) + ' ' + esc(unit.title) + '</div><h1>' + les.title + '</h1>' +
+    '<p class="lead">' + les.intro + '</p><div class="goals"><b>' + U('goals') + '</b><ul>' + les.goals.map(g => '<li>' + g + '</li>').join('') + '</ul></div>';
+  v.appendChild(head);
+  const sec = (t, sub) => { const h = document.createElement('h2'); h.innerHTML = t; v.appendChild(h); if (sub) { const p = document.createElement('p'); p.className = 'hint'; p.innerHTML = sub; v.appendChild(p); } };
+  sec(U('secBlocks'), U('secBlocksSub'));
+  const bc = document.createElement('div'); bc.className = 'bcards';
+  les.blocks.forEach(t => bc.appendChild(blockCard(t)));
+  v.appendChild(bc);
+  sec(U('secEx'), U('secExSub'));
+  les.examples.forEach((ex, i) => {
+    const cap = document.createElement('div'); cap.className = 'bridge-cap';
+    cap.innerHTML = '<h3>' + (i + 1) + '. ' + esc(ex.title) + '</h3><span class="hint">' + (ex.desc || '') + '</span>';
+    v.appendChild(cap);
+    const br = bridge(ex, { file: les.id + '-' + (i + 1) + '.ino' });
+    v.appendChild(br);
+    if (ex.notes && ex.notes.length) {
+      const ul = document.createElement('ul'); ul.className = 'notes';
+      for (const [code, txt] of ex.notes) {
+        const li = document.createElement('li');
+        const chip = document.createElement('button'); chip.className = 'chip'; chip.innerHTML = code; chip.title = U('hlLine');
+        const plain = chip.textContent;
+        chip.onclick = () => { ul.querySelectorAll('.chip.on').forEach(c => c.classList.remove('on')); chip.classList.add('on'); br.highlightText(plain); };
+        const sp = document.createElement('span'); sp.innerHTML = txt;
+        li.append(chip, sp); ul.appendChild(li);
+      }
+      v.appendChild(ul);
+    }
+  });
+  if (les.arduino && les.arduino.length) {
+    sec(U('secIde'));
+    const t = document.createElement('div'); t.className = 'tips';
+    t.innerHTML = '<ul>' + les.arduino.map(x => '<li>' + x + '</li>').join('') + '</ul>';
+    v.appendChild(t);
+  }
+  if (les.tries && les.tries.length) {
+    sec(U('secTry'), U('secTrySub'));
+    les.tries.forEach((tr, i) => {
+      const box = document.createElement('div'); box.className = 'task';
+      box.innerHTML = '<p><span class="num">' + (i + 1) + '</span>' + tr.task + '</p>';
+      const b = document.createElement('button'); b.className = 'btn'; b.textContent = U('showAns');
+      let shown = null;
+      b.onclick = () => {
+        if (shown) { shown.remove(); shown = null; b.textContent = U('showAns'); return; }
+        shown = document.createElement('div');
+        if (tr.answer) { const a = document.createElement('div'); a.className = 'answer'; a.innerHTML = tr.answer; shown.appendChild(a); }
+        shown.appendChild(bridge(tr, { file: les.id + '-try' + (i + 1) + '.ino' }));
+        box.appendChild(shown); b.textContent = U('hideAns');
+      };
+      box.appendChild(b); v.appendChild(box);
+    });
+  }
+  if (les.quiz && les.quiz.length) {
+    sec(U('secQuiz'));
+    const qz = document.createElement('div'); qz.className = 'quiz';
+    const state = les.quiz.map(() => false);
+    const banner = document.createElement('div'); banner.className = 'done-banner' + (DONE[les.id] ? ' show' : '');
+    banner.textContent = U('doneBanner');
+    les.quiz.forEach((q, qi) => {
+      const box = document.createElement('div'); box.className = 'q';
+      const name = les.id + '-q' + qi;
+      box.innerHTML = '<div class="qt">' + (qi + 1) + '. ' + q.q + '</div>' +
+        q.choices.map((c, ci) => '<label><input type="radio" name="' + name + '" value="' + ci + '"><span>' + c + '</span></label>').join('') +
+        '<div class="fb" role="status"></div>';
+      box.addEventListener('change', e => {
+        const ok = +e.target.value === q.answer;
+        box.classList.toggle('right', ok); box.classList.toggle('wrong', !ok);
+        $('.fb', box).innerHTML = ('<b>' + U(ok ? 'right' : 'wrong') + '</b> — ') + q.why;
+        state[qi] = ok;
+        if (state.every(Boolean)) { DONE[les.id] = 1; store.set('mbr4-done', DONE); banner.classList.add('show'); renderSide(les.id); }
+      });
+      qz.appendChild(box);
+    });
+    v.append(qz, banner);
+  }
+  const all = D.lessons, i = all.indexOf(les);
+  const pg = document.createElement('div'); pg.className = 'pager';
+  pg.innerHTML = (i > 0 ? '<a href="#' + all[i - 1].id + '"><small>' + U('prev') + '</small>' + all[i - 1].title + '</a>' : '<span></span>') +
+    (i < all.length - 1 ? '<a class="next" href="#' + all[i + 1].id + '"><small>' + U('next') + '</small>' + all[i + 1].title + '</a>' : '<span></span>');
+  v.appendChild(pg);
+  v.appendChild(footer());
+}
+
+// ---------------- หน้าแรก ----------------
+function homePage() {
+  const v = $('#view');
+  const demo = D.lessons.find(l => l.id === 'u1-button').examples[0];
+  v.innerHTML = '<section class="hero"><div class="crumb">' + U('heroCrumb') + '</div><h1>' + U('heroH1') + '</h1><p class="lead">' + U('heroLead') + '</p></section>';
+  const cap = document.createElement('div'); cap.className = 'bridge-cap';
+  cap.innerHTML = '<h3>' + esc(demo.title) + '</h3><span class="hint">' + U('demoHint') + '</span>';
+  v.append(cap, bridge(demo, { file: 'button.ino' }));
+  const lg = document.createElement('div'); lg.className = 'legend';
+  lg.innerHTML = '<span>' + U('legend') + '</span>';
+  v.appendChild(lg);
+  const h = document.createElement('h2'); h.textContent = U('units'); v.appendChild(h);
+  const g = document.createElement('div'); g.className = 'units';
+  for (const u of D.units) {
+    const ls = lessonsByUnit(u.id);
+    const a = document.createElement(ls.length ? 'a' : 'div');
+    a.className = 'ucard' + (u.soon ? ' soon' : ''); a.style.setProperty('--u', u.color);
+    if (ls.length) a.href = '#' + ls[0].id;
+    a.innerHTML = '<div class="n">' + U('unit')(u.id) + ' · ' + (u.soon ? U('soon') : U('nLessons')(ls.length)) + '</div><b>' + esc(u.title) + '</b><span>' + esc(u.sub) + '</span>';
+    g.appendChild(a);
+  }
+  v.appendChild(g);
+  const h2 = document.createElement('h2'); h2.textContent = U('how'); v.appendChild(h2);
+  const st = document.createElement('ol'); st.className = 'steps';
+  st.innerHTML = U('steps');
+  v.appendChild(st);
+  v.appendChild(footer());
+}
+
+function startPage() {
+  const v = $('#view');
+  v.innerHTML = '<div class="crumb"><a href="#home">' + U('home') + '</a></div>' + U('startHtml');
+  v.appendChild(bridge(D.lessons[0].examples[0], { file: 'empty.ino' }));
+  v.appendChild(footer());
+}
+
+function refPage() {
+  const v = $('#view');
+  v.innerHTML = '<div class="crumb"><a href="#home">' + U('home') + '</a></div><h1>' + U('ref') + '</h1><p class="lead">' + U('refLead') + '</p>' +
+    '<input class="search" id="q" type="search" placeholder="' + U('search') + '" aria-label="' + U('search') + '">';
+  const body = document.createElement('div'); v.appendChild(body);
+  const order = ['core', 'move', 'looks', 'control', 'ops', 'vars', 'serial', 'sensing'];
+  const draw = q => {
+    body.innerHTML = '';
+    q = (q || '').toLowerCase();
+    for (const c of order) {
+      const types = Object.keys(D.blocks).filter(t => D.blocks[t].cat === c && (!q || (t + ' ' + D.blocks[t].name + ' ' + (D.blocks[t].value || D.blocks[t].program) + ' ' + D.blocks[t].desc).toLowerCase().includes(q)));
+      if (!types.length) continue;
+      const sec = document.createElement('section'); sec.className = 'refcat'; sec.style.setProperty('--u', CAT[c][1]);
+      sec.innerHTML = '<h2><i></i>' + CAT[c][0] + (c === 'serial' || c === 'sensing' ? ' <span class="hint">' + U('later') + '</span>' : '') + '</h2>';
+      const g = document.createElement('div'); g.className = 'reftab';
+      types.forEach(t => g.appendChild(blockCard(t)));
+      sec.appendChild(g); body.appendChild(sec);
+    }
+    if (!body.children.length) body.innerHTML = '<p>' + U('notFound') + '</p>';
+  };
+  draw('');
+  $('#q').addEventListener('input', e => draw(e.target.value));
+  v.appendChild(footer());
+}
+
+function footer() {
+  const f = document.createElement('footer');
+  f.innerHTML = U('footer');
+  return f;
+}
+
+// ---------------- เส้นทาง ----------------
+function route(keepScroll) {
+  const h = location.hash.replace(/^#\/?(l\/)?/, '');
+  const y = window.scrollY;
+  const les = D.lessons.find(l => l.id === h);
+  if (les) { renderSide(les.id); lessonPage(les); document.title = les.title.replace(/<[^>]+>/g, '').replace(/&lt;/g, '<').replace(/&gt;/g, '>') + ' · ' + U('brand'); }
+  else if (h === 'start') { renderSide('start'); startPage(); document.title = U('startTitle') + ' · ' + U('brand'); }
+  else if (h === 'ref') { renderSide('ref'); refPage(); document.title = U('ref') + ' · ' + U('brand'); }
+  else { renderSide('home'); homePage(); document.title = U('title'); }
+  if (keepScroll) window.scrollTo(0, y); else window.scrollTo(0, 0);
+}
+window.addEventListener('hashchange', () => route(false));
+applyStatic();
+(async () => {
+  try {
+    RAW = fromRecords(INLINE.startsWith('[') ? JSON.parse(INLINE) : await (await fetch('data.json')).json());
+    D = localize(SITE);
+  } catch (e) {
+    $('#view').innerHTML = U('loadErr');
+    return;
+  }
+  route(false);
+})();
+</script>
+</body>
+</html>

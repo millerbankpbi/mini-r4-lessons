@@ -1,0 +1,37 @@
+<!DOCTYPE html><html><head><meta charset="utf-8"></head><body>
+<div id="ws" style="width:1200px;height:900px"></div>
+<xml id="toolbox" style="display:none"><category name="x"></category></xml>
+<script src="../blockly-core/blockly.js"></script>
+<script src="../blockly-core/vertical_extensions.js"></script>
+<script src="../blockly-core/msg/en.js"></script>
+<script src="../blockly-core/msg/th.js"></script>
+<script src="../blockly-core/arduino.js"></script>
+<script src="../blockly-core/blocks/_mini.js"></script>
+<script src="../blockly-core/blocks/control.js"></script>
+<script src="../blockly-core/blocks/data.js"></script>
+<script src="../blockly-core/blocks/math.js"></script>
+<script src="../blockly-core/blocks/operators.js"></script>
+<script src="../blockly-core/blocks/pins.js"></script>
+<script src="../blockly-core/blocks/procedures.js"></script>
+<script src="../blockly-core/blocks/text.js"></script>
+<script src="../blockly-core/blocks/picker/colour.js"></script>
+<script src="../blockly-core/blocks/picker/matrix.js"></script>
+<script src="../blockly-core/blocks/picker/note.js"></script>
+<script src="../blockly-core/generator/_mini.js"></script>
+<script src="../blockly-core/generator/control.js"></script>
+<script src="../blockly-core/generator/data.js"></script>
+<script src="../blockly-core/generator/math.js"></script>
+<script src="../blockly-core/generator/operators.js"></script>
+<script src="../blockly-core/generator/pins.js"></script>
+<script src="../blockly-core/generator/procedures.js"></script>
+<script src="../blockly-core/generator/text.js"></script>
+<script>
+window.ready = false;
+window.onload = () => {
+  try {
+    Blockly.ScratchMsgs.setLocale('en');
+    window.ws = Blockly.inject('ws', { toolbox: document.getElementById('toolbox'), media: '../blockly-core/media/', scrollbars: true, zoom: { startScale: 0.75 } });
+    window.ready = true;
+  } catch (e) { window.initError = String(e && e.stack || e); }
+};
+</script><script src="export.js"></script></body></html>
