@@ -1,0 +1,613 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Quick Box Drop · เขียนบล็อก จำลอง แล้วส่งไปหุ่น Mini R4</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@500&family=IBM+Plex+Sans+Thai:wght@400;500;600;700&family=Mitr:wght@500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --ink: #13233f; --ink-2: #4c5c78; --board: #e3e8ef; --panel: #ffffff; --rule: #cdd5e0;
+    --green: #2e9e4f; --green-soft: #dcf1e2; --yellow: #ffcc1f; --red: #d62839;
+    --blue: #1f5fd6; --orange: #d9731a;
+    --display: 'Mitr', 'IBM Plex Sans Thai', system-ui, sans-serif;
+    --body: 'IBM Plex Sans Thai', system-ui, -apple-system, 'Segoe UI', sans-serif;
+    --mono: 'IBM Plex Mono', ui-monospace, Menlo, Consolas, monospace;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; background: var(--board); color: var(--ink); font: 16px/1.55 var(--body); }
+  button { font: inherit; color: inherit; }
+  :focus-visible { outline: 3px solid var(--blue); outline-offset: 2px; }
+
+  header { display: flex; align-items: baseline; gap: 14px; flex-wrap: wrap; padding: 14px 20px 10px; }
+  header h1 { margin: 0; font: 600 26px/1.1 var(--display); letter-spacing: .01em; }
+  header p { margin: 0; color: var(--ink-2); font-size: 15px; }
+  header a { margin-left: auto; color: var(--ink-2); font-size: 14px; }
+
+  .layout { display: grid; grid-template-columns: minmax(0, 1fr) minmax(340px, 520px); gap: 16px; padding: 0 20px 24px; align-items: start; }
+  .editor { position: sticky; top: 12px; height: calc(100vh - 86px); min-height: 440px; display: flex; flex-direction: column;
+            background: var(--panel); border-radius: 14px; overflow: hidden; box-shadow: 0 1px 0 var(--rule); }
+  #blockly { flex: 1; min-height: 0; }
+  .progbar { display: flex; align-items: center; gap: 10px; padding: 8px 12px; border-top: 1px solid var(--rule); font-size: 14px; }
+  .progbar .count { white-space: nowrap; color: var(--ink-2); }
+  .progbar code { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font: 500 14px var(--mono); color: var(--ink); }
+  .warn { margin: 0; padding: 6px 12px; background: #fff4d1; color: #6b4b00; font-size: 14px; }
+  #textPanel { padding: 10px 12px 12px; border-top: 1px solid var(--rule); background: #f6f8fb; }
+  #textPanel label { display: block; font-size: 14px; color: var(--ink-2); margin-bottom: 4px; }
+  #textPanel textarea { width: 100%; min-height: 64px; font: 500 14px/1.5 var(--mono); padding: 8px; border: 1px solid var(--rule); border-radius: 8px; resize: vertical; }
+  #textPanel .row { margin-top: 8px; }
+  #textErr { color: var(--red); font-size: 14px; }
+
+  .arena { display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+  .fieldwrap { background: var(--panel); border-radius: 14px; padding: 8px; box-shadow: 0 1px 0 var(--rule); }
+  #field { display: block; width: 100%; aspect-ratio: 1 / 1; }
+
+  .row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+  .btn { border: 0; border-radius: 10px; padding: 9px 14px; background: #fff; box-shadow: inset 0 0 0 1.5px var(--rule); cursor: pointer; font-weight: 600; font-size: 15px; }
+  .btn:hover { box-shadow: inset 0 0 0 1.5px var(--ink-2); }
+  .btn:disabled { opacity: .45; cursor: default; box-shadow: inset 0 0 0 1.5px var(--rule); }
+  .btn.go { background: var(--green); color: #fff; box-shadow: none; padding: 9px 20px; }
+  .btn.go:hover { background: #26873f; }
+  .btn.bt { background: var(--blue); color: #fff; box-shadow: none; }
+  .btn.bt:hover { background: #184db0; }
+  .btn.small { padding: 5px 10px; font-size: 14px; }
+  .seg { display: inline-flex; border-radius: 10px; box-shadow: inset 0 0 0 1.5px var(--rule); overflow: hidden; }
+  .seg button { border: 0; background: transparent; padding: 8px 11px; cursor: pointer; font-weight: 600; font-size: 14px; }
+  .seg button[aria-pressed="true"] { background: var(--ink); color: #fff; }
+  .controls .spacer { flex: 1; }
+
+  .card { background: var(--panel); border-radius: 14px; padding: 14px 16px; box-shadow: 0 1px 0 var(--rule); }
+  .card h2 { margin: 0 0 6px; font: 600 17px/1.3 var(--display); }
+
+  .scoreline { display: flex; align-items: flex-end; justify-content: space-between; gap: 12px; margin-bottom: 10px; }
+  .total { font: 600 64px/0.95 var(--display); font-variant-numeric: tabular-nums; }
+  .total small { font-size: 22px; color: var(--ink-2); font-weight: 500; margin-left: 4px; }
+  .clock { text-align: right; font: 500 30px/1 var(--display); font-variant-numeric: tabular-nums; }
+  .clock span { display: block; font: 400 13px/1.4 var(--body); color: var(--ink-2); }
+
+  .tiles { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; margin: 4px 0 12px; }
+  .tile { border-radius: 9px; padding: 6px 8px 7px; background: #eef1f5; min-height: 58px; display: grid; grid-template-columns: auto 1fr; column-gap: 6px; align-content: start; }
+  .tile b { font: 600 22px/1 var(--display); grid-row: span 2; }
+  .tile i { font-style: normal; font-size: 12.5px; line-height: 1.35; color: var(--ink-2); }
+  .tile.reached { background: var(--green-soft); }
+  .tile.reached i.z { color: #17602c; font-weight: 600; }
+  .tile i.c::before { content: ''; display: inline-block; width: 9px; height: 9px; border-radius: 50%; background: var(--red); margin-right: 4px; vertical-align: -1px; }
+  .tile.out i.c { color: #17602c; font-weight: 600; }
+  .tile.out i.c::before { background: transparent; box-shadow: inset 0 0 0 2px var(--green); }
+  .tile.start { background: #fff6d6; }
+  .tile.start.reached { background: var(--green-soft); }
+
+  table.rows { width: 100%; border-collapse: collapse; font-size: 15px; }
+  table.rows td { padding: 4px 0; border-top: 1px solid #e7ebf1; }
+  table.rows td:nth-child(2) { color: var(--ink-2); }
+  table.rows td:last-child { text-align: right; font-weight: 600; font-variant-numeric: tabular-nums; width: 56px; }
+  details { margin-top: 10px; font-size: 14px; color: var(--ink-2); }
+  details summary { cursor: pointer; color: var(--ink); font-weight: 600; }
+  details ul { margin: 6px 0 0; padding-left: 20px; }
+
+  .status { margin: 0 0 10px; font-size: 15px; }
+  .status.ok { color: #17602c; }
+  .status.err { color: var(--red); }
+  .hint { margin: 10px 0 0; font-size: 13.5px; color: var(--ink-2); }
+  #btTimer { font: 500 20px var(--display); font-variant-numeric: tabular-nums; margin-left: auto; }
+
+  #log { list-style: none; margin: 0; padding: 0; max-height: 260px; overflow: auto; font-size: 14px; }
+  #log li { display: grid; grid-template-columns: 52px 1fr auto; gap: 8px; padding: 4px 0; border-top: 1px solid #eef1f5; }
+  #log li:first-child { border-top: 0; }
+  #log .t { color: var(--ink-2); font-variant-numeric: tabular-nums; }
+  #log .p { font-weight: 600; color: #17602c; }
+  #log li.line .m { color: #8a5a00; }
+  #log li.end .m { font-weight: 600; }
+  #log li.info .m { color: var(--ink-2); }
+  #log .empty { display: block; color: var(--ink-2); }
+
+  @media (max-width: 900px) {
+    .layout { grid-template-columns: 1fr; padding: 0 10px 20px; }
+    header { padding: 12px 12px 8px; }
+    .editor { position: static; height: 62vh; min-height: 380px; }
+    .total { font-size: 54px; }
+  }
+</style>
+<script src="vendor/blockly_compressed.js"></script>
+<script src="vendor/blockly_th.js"></script>
+<script src="quickbox-engine.js"></script>
+</head>
+<body>
+<header>
+  <h1>Quick Box Drop</h1>
+  <p>ต่อบล็อกใต้ “เมื่อเริ่ม” กดจำลองดูคะแนน แล้วส่งโปรแกรมไปหุ่น</p>
+  <a href="../">บทเรียน Mini R4</a>
+</header>
+
+<main class="layout">
+  <section class="editor" aria-label="พื้นที่ต่อบล็อก">
+    <div id="blockly"></div>
+    <p class="warn" id="orphan" hidden></p>
+    <div class="progbar">
+      <span class="count" id="count">0 คำสั่ง</span>
+      <code id="progText" title="โปรแกรมที่จะส่งไปหุ่น"></code>
+      <button class="btn small" id="textToggle" aria-expanded="false" aria-controls="textPanel">แก้เป็นตัวอักษร</button>
+    </div>
+    <div id="textPanel" hidden>
+      <label for="textIn">F = เดินหน้า (ซม.) · B = ถอยหลัง (ซม.) · L = เลี้ยวซ้าย · R = เลี้ยวขวา · U = กลับหลัง · S = ความเร็ว 15–80</label>
+      <textarea id="textIn" spellcheck="false" placeholder="เช่น F33 R F30 R F32"></textarea>
+      <div class="row">
+        <button class="btn small" id="textApply">สร้างบล็อกจากข้อความ</button>
+        <button class="btn small" id="textCopy">คัดลอก</button>
+        <span id="textErr" role="alert"></span>
+      </div>
+    </div>
+  </section>
+
+  <section class="arena" aria-label="สนามและคะแนน">
+    <div class="fieldwrap"><canvas id="field" role="img" aria-label="สนาม Quick Box Drop ขนาด 120 x 120 ซม."></canvas></div>
+
+    <div class="row controls">
+      <button class="btn go" id="run">▶ จำลอง</button>
+      <div class="seg" role="group" aria-label="ความเร็วแอนิเมชัน">
+        <button data-x="1" aria-pressed="true">×1</button><button data-x="2" aria-pressed="false">×2</button><button data-x="4" aria-pressed="false">×4</button>
+      </div>
+      <span class="spacer"></span>
+      <button class="btn" id="skip">ดูผลทันที</button>
+      <button class="btn" id="reset">เริ่มใหม่</button>
+    </div>
+
+    <section class="card" aria-labelledby="scoreTitle">
+      <h2 id="scoreTitle" class="sr" hidden>คะแนน</h2>
+      <div class="scoreline">
+        <div class="total" aria-live="polite"><span id="total">0</span><small>/200</small></div>
+        <div class="clock"><span>เวลาจำลอง (ประมาณ)</span><b id="clock">0.0</b> วินาที</div>
+      </div>
+      <div class="tiles" id="tiles"></div>
+      <table class="rows"><tbody id="rows"></tbody></table>
+      <details>
+        <summary>กติกาการให้คะแนน</summary>
+        <ul>
+          <li>ออกตัว (จุดกลางหุ่นพ้นช่อง 1) 30 คะแนน</li>
+          <li>ไปถึงพื้นที่เขียวช่อง 2–8 ช่องละ 10 คะแนน (จุดกลางหุ่นเข้าไปในพื้นที่เขียว)</li>
+          <li>ดันกระป๋องออกจากพื้นที่เขียว ใบละ 10 คะแนน (จุดกลางกระป๋องพ้นพื้นที่เขียว)</li>
+          <li>ไปครบทุกช่องและดันกระป๋องครบ 7 ใบ ได้โบนัสอีก 30 คะแนน รวมเต็ม 200</li>
+          <li>ผู้ชนะ: คะแนนมากที่สุด ถ้าเท่ากันดูเวลาที่น้อยกว่า</li>
+          <li>แตะเส้นดำนับจำนวนครั้งไว้ให้ดู ไม่หักคะแนน · หุ่นตกขอบสนาม จบรอบทันที</li>
+          <li>เวลาในตัวจำลองเป็นค่าประมาณ ใช้เวลาจากหุ่นจริงตอนแข่ง</li>
+        </ul>
+      </details>
+    </section>
+
+    <section class="card" aria-labelledby="robotTitle">
+      <h2 id="robotTitle">หุ่นจริง (Bluetooth)</h2>
+      <p class="status" id="btStatus" role="status">ยังไม่ได้เชื่อมต่อ</p>
+      <div class="row">
+        <button class="btn bt" id="btConnect">เชื่อมต่อหุ่น</button>
+        <button class="btn" id="btSend" disabled>ส่งโปรแกรมไปหุ่น</button>
+      </div>
+      <div class="row" style="margin-top:8px">
+        <button class="btn" id="btGo" disabled>เริ่มวิ่ง</button>
+        <button class="btn" id="btStop" disabled title="หุ่นหยุดหลังทำคำสั่งที่กำลังทำอยู่เสร็จ">หยุด</button>
+        <span id="btTimer"></span>
+      </div>
+      <p class="hint">Android และคอมพิวเตอร์ใช้ Chrome · iPhone ใช้แอป Bluefy · ส่งโปรแกรมแล้วกดปุ่ม UP ที่หุ่นเพื่อเริ่มวิ่งได้ · ปุ่ม “หยุด” บนเว็บจะหยุดหลังจบคำสั่งที่กำลังทำ ถ้าต้องหยุดทันทีให้กด DOWN ที่หุ่น</p>
+    </section>
+
+    <section class="card" aria-labelledby="logTitle">
+      <h2 id="logTitle">เกิดอะไรขึ้นบ้าง</h2>
+      <ol id="log"><li class="empty">กด “จำลอง” เพื่อดูหุ่นวิ่งและคะแนนทีละขั้น</li></ol>
+    </section>
+  </section>
+</main>
+
+<script>
+'use strict';
+const $ = (id) => document.getElementById(id);
+const STORE = 'qb-blocks-v1';
+const MAX_STEPS = 120;
+
+// ===================== บล็อก 6 แบบ + บล็อกเริ่ม =====================
+const OPS = {
+  qb_forward: { op: 'F', field: 'CM' }, qb_back: { op: 'B', field: 'CM' },
+  qb_left: { op: 'L' }, qb_right: { op: 'R' }, qb_uturn: { op: 'U' },
+  qb_speed: { op: 'S', field: 'SPEED' },
+};
+const TYPE_OF = Object.fromEntries(Object.entries(OPS).map(([type, o]) => [o.op, type]));
+const cm = (value) => ({ type: 'field_number', name: 'CM', value, min: QB.DIST.min, max: QB.DIST.max, precision: 1 });
+const step = { previousStatement: null, nextStatement: null };
+Blockly.defineBlocksWithJsonArray([
+  { type: 'qb_start', message0: 'เมื่อเริ่ม (ช่อง 1)', nextStatement: null, style: 'qb_start',
+    tooltip: 'ต่อบล็อกใต้บล็อกนี้ หุ่นจะทำจากบนลงล่าง' },
+  { type: 'qb_forward', message0: 'เดินหน้า %1 ซม.', args0: [cm(30)], ...step, style: 'qb_move',
+    tooltip: 'เดินหน้าตามระยะ ' + QB.DIST.min + '–' + QB.DIST.max + ' ซม.' },
+  { type: 'qb_back', message0: 'ถอยหลัง %1 ซม.', args0: [cm(20)], ...step, style: 'qb_move',
+    tooltip: 'ถอยหลังตามระยะ ' + QB.DIST.min + '–' + QB.DIST.max + ' ซม.' },
+  { type: 'qb_left', message0: '↰ เลี้ยวซ้าย 90°', ...step, style: 'qb_turn', tooltip: 'หมุนอยู่กับที่ไปทางซ้าย 90 องศา' },
+  { type: 'qb_right', message0: '↱ เลี้ยวขวา 90°', ...step, style: 'qb_turn', tooltip: 'หมุนอยู่กับที่ไปทางขวา 90 องศา' },
+  { type: 'qb_uturn', message0: '↻ กลับหลัง 180°', ...step, style: 'qb_turn', tooltip: 'หมุนกลับหลัง 180 องศา' },
+  { type: 'qb_speed', message0: 'ตั้งความเร็ว %1', ...step, style: 'qb_speed',
+    args0: [{ type: 'field_number', name: 'SPEED', value: QB.SPEED.def, min: QB.SPEED.min, max: QB.SPEED.max, precision: 1 }],
+    tooltip: 'ความเร็วของการเดินหน้า/ถอยหลังที่ตามมา (' + QB.SPEED.min + '–' + QB.SPEED.max + ', เริ่มต้น ' + QB.SPEED.def + ')' },
+]);
+const theme = Blockly.Theme.defineTheme('quickbox', {
+  base: Blockly.Themes.Classic,
+  blockStyles: {
+    qb_start: { colourPrimary: '#e0a800', hat: 'cap' },
+    qb_move: { colourPrimary: '#2e9e4f' },
+    qb_turn: { colourPrimary: '#1f5fd6' },
+    qb_speed: { colourPrimary: '#d9731a' },
+  },
+  componentStyles: { workspaceBackgroundColour: '#f6f8fb', flyoutBackgroundColour: '#e8edf3', flyoutOpacity: 1, scrollbarColour: '#b7c2d0' },
+  fontStyle: { family: "'IBM Plex Sans Thai', system-ui, sans-serif", weight: '600', size: 13 },
+});
+const ws = Blockly.inject('blockly', {
+  toolbox: { kind: 'flyoutToolbox', contents: Object.keys(OPS).map((type) => ({ kind: 'block', type })) },
+  theme, renderer: 'zelos', trashcan: true, sounds: false, media: 'vendor/media/',
+  move: { scrollbars: true, drag: true, wheel: false },
+  zoom: { controls: true, wheel: true, startScale: window.innerWidth < 600 ? 0.68 : 0.85, maxScale: 1.6, minScale: 0.5 },
+});
+
+function chainState(steps) {
+  let next = null;
+  for (const s of steps.slice().reverse()) {
+    const o = OPS[TYPE_OF[s.op]], b = { type: TYPE_OF[s.op] };
+    if (o.field) b.fields = { [o.field]: s.v };
+    if (next) b.next = { block: next };
+    next = b;
+  }
+  const start = { type: 'qb_start', x: 24, y: 24, deletable: false };
+  if (next) start.next = { block: next };
+  return { blocks: { languageVersion: 0, blocks: [start] } };
+}
+let loading = false;
+function loadState(state) {
+  loading = true;
+  try { Blockly.serialization.workspaces.load(state, ws); } finally { loading = false; }
+  ensureOneStart();
+  programChanged();
+  showStartBlock();
+}
+// เลื่อนให้เห็นบล็อก "เมื่อเริ่ม" (จอแคบ แถบบล็อกด้านซ้ายบังได้)
+function showStartBlock() {
+  const start = ws.getBlocksByType('qb_start', false)[0];
+  if (!start) return;
+  Blockly.svgResize(ws);
+  const xy = start.getRelativeToSurfaceXY();
+  ws.scroll(-(xy.x - 16) * ws.scale, -(xy.y - 16) * ws.scale);
+}
+function ensureOneStart() {
+  const starts = ws.getBlocksByType('qb_start', false);
+  if (!starts.length) {
+    const b = ws.newBlock('qb_start'); b.initSvg(); b.render(); b.moveBy(24, 24); starts.push(b);
+  }
+  starts.forEach((b, i) => { if (i === 0) b.setDeletable(false); else b.dispose(true); });
+}
+function readProgram() {
+  const start = ws.getBlocksByType('qb_start', false)[0];
+  const steps = [], ids = [];
+  for (let b = start && start.getNextBlock(); b; b = b.getNextBlock()) {
+    const o = OPS[b.type];
+    if (!o) continue;
+    steps.push({ op: o.op, v: o.field ? Number(b.getFieldValue(o.field)) : null });
+    ids.push(b.id);
+  }
+  const orphans = ws.getTopBlocks(false).filter((t) => t.type !== 'qb_start')
+    .reduce((n, t) => n + t.getDescendants(false).length, 0);
+  return { steps, ids, orphans };
+}
+
+// ===================== โปรแกรมเปลี่ยน =====================
+let prog = { steps: [], ids: [], orphans: 0 };
+let sentText = null;   // โปรแกรมที่อยู่ในหุ่นตอนนี้
+function programChanged() {
+  prog = readProgram();
+  const text = QB.toText(prog.steps);
+  $('progText').textContent = text || '(ยังไม่มีคำสั่ง)';
+  $('count').textContent = prog.steps.length + ' คำสั่ง';
+  const warn = [];
+  if (prog.orphans) warn.push('มีบล็อก ' + prog.orphans + ' ชิ้นที่ไม่ได้ต่อกับ “เมื่อเริ่ม” บล็อกพวกนี้จะไม่ทำงาน');
+  if (prog.steps.length > MAX_STEPS) warn.push('คำสั่งเกิน ' + MAX_STEPS + ' ขั้น หุ่นรับได้ไม่เกิน ' + MAX_STEPS + ' ขั้น');
+  $('orphan').hidden = !warn.length; $('orphan').textContent = warn.join(' · ');
+  if (!$('textPanel').hidden && document.activeElement !== $('textIn')) $('textIn').value = text;
+  try { localStorage.setItem(STORE, JSON.stringify(Blockly.serialization.workspaces.save(ws))); } catch (e) { /* โหมดส่วนตัว: ไม่จำ */ }
+  stopPlayback(); showStart();
+  updateRobotButtons();
+}
+let changeTimer = 0;
+ws.addChangeListener((e) => {
+  if (loading || e.isUiEvent) return;
+  if (e.type === Blockly.Events.BLOCK_CREATE && ws.getBlocksByType('qb_start', false).length > 1) ensureOneStart();
+  clearTimeout(changeTimer); changeTimer = setTimeout(programChanged, 120);
+});
+
+// ===================== สนาม =====================
+const F = QB.FIELD, M = 7;   // เว้นขอบรอบสนาม 7 ซม. ให้เห็นกระป๋องที่ถูกดันตกขอบ
+const canvas = $('field'), g = canvas.getContext('2d');
+let sim = null, playT = 0, playing = false, mult = 1, lastStamp = 0, lit = null;
+function sizeCanvas() {
+  const w = canvas.clientWidth, d = window.devicePixelRatio || 1;
+  canvas.width = Math.round(w * d); canvas.height = Math.round(w * d);
+  redraw();
+}
+function draw(fr, upto) {
+  const W = canvas.width, S = W / (F.size + 2 * M), P = (v) => (v + M) * S;
+  g.setTransform(1, 0, 0, 1, 0, 0);
+  g.fillStyle = '#d5dce6'; g.fillRect(0, 0, W, W);
+  g.fillStyle = '#fff'; g.fillRect(P(0), P(0), F.size * S, F.size * S);
+  for (const z of F.zones) {
+    g.fillStyle = '#39a85a'; g.fillRect(P(z.x), P(z.y), z.w * S, z.h * S);
+    // เลขช่องไว้ด้านซ้ายของพื้นที่เขียว ไม่ให้กระป๋องตรงกลางบัง
+    g.fillStyle = 'rgba(255,255,255,.95)'; g.textAlign = 'center'; g.textBaseline = 'middle';
+    g.font = '600 ' + Math.round(6.5 * S) + 'px Mitr, sans-serif';
+    g.fillText(String(z.n), P(z.x + 4.6), P(z.y + z.h / 2) + S * 0.4);
+  }
+  g.fillStyle = '#000';
+  for (const q of F.lines) g.fillRect(P(q.x), P(q.y), q.w * S, q.h * S);
+  // เส้นทางที่หุ่นวิ่งผ่าน
+  if (sim && upto > 0) {
+    g.strokeStyle = 'rgba(31,95,214,.6)'; g.lineWidth = Math.max(1.5, 0.6 * S); g.lineJoin = 'round';
+    g.beginPath(); g.moveTo(P(sim.frames[0].x), P(sim.frames[0].y));
+    for (let i = 1; i <= upto; i++) g.lineTo(P(sim.frames[i].x), P(sim.frames[i].y));
+    g.stroke();
+  }
+  // กระป๋อง (มองจากด้านบน: ขอบแดง ฝาเงิน)
+  for (const [x, y] of fr.cans) {
+    g.beginPath(); g.arc(P(x), P(y), QB.CAN_R * S, 0, Math.PI * 2); g.fillStyle = '#d62839'; g.fill();
+    g.beginPath(); g.arc(P(x), P(y), QB.CAN_R * 0.68 * S, 0, Math.PI * 2); g.fillStyle = '#e4e8ec'; g.fill();
+    g.beginPath(); g.ellipse(P(x), P(y) - QB.CAN_R * 0.25 * S, QB.CAN_R * 0.22 * S, QB.CAN_R * 0.12 * S, 0, 0, Math.PI * 2); g.fillStyle = '#9aa3ad'; g.fill();
+  }
+  // หุ่น
+  const r = { x: fr.x, y: fr.y, h: fr.h };
+  const touching = F.lines.some((q) => QB.robotHitsRect(r, q));
+  const w = QB.ROBOT.w * S, l = QB.ROBOT.l * S;
+  g.save(); g.translate(P(fr.x), P(fr.y)); g.rotate(fr.h * Math.PI / 180);
+  g.fillStyle = '#2b2f36';
+  g.fillRect(-w / 2 - 0.4 * S, -3.2 * S, 2.4 * S, 6.5 * S); g.fillRect(w / 2 - 2 * S, -3.2 * S, 2.4 * S, 6.5 * S);
+  g.fillStyle = 'rgba(19,35,63,.9)'; roundRect(-w / 2 + 2 * S, -l / 2, w - 4 * S, l, 1.6 * S); g.fill();
+  g.fillStyle = '#ffcc1f'; g.fillRect(-w / 2 + 2 * S, -l / 2, w - 4 * S, 1.8 * S);
+  g.beginPath(); g.moveTo(0, -l / 2 + 3 * S); g.lineTo(-2.6 * S, -l / 2 + 7 * S); g.lineTo(2.6 * S, -l / 2 + 7 * S); g.closePath(); g.fillStyle = '#fff'; g.fill();
+  g.beginPath(); g.arc(0, 0, 0.9 * S, 0, Math.PI * 2); g.fillStyle = '#ffcc1f'; g.fill();
+  if (touching) { g.strokeStyle = '#ff3b30'; g.lineWidth = Math.max(2, 0.7 * S); g.strokeRect(-w / 2, -l / 2, w, l); }
+  g.restore();
+}
+function roundRect(x, y, w, h, r) { g.beginPath(); g.moveTo(x + r, y); g.arcTo(x + w, y, x + w, y + h, r); g.arcTo(x + w, y + h, x, y + h, r); g.arcTo(x, y + h, x, y, r); g.arcTo(x, y, x + w, y, r); g.closePath(); }
+
+const START_FRAME = { x: QB.START.x, y: QB.START.y, h: QB.START.h, s: -1,
+  cans: F.canZones.map((n) => { const z = F.zones.find((q) => q.n === n); return [z.x + z.w / 2, z.y + z.h / 2]; }) };
+function frameAt(T) {
+  const fs = sim.frames; let lo = 0, hi = fs.length - 1;
+  while (lo < hi) { const mid = (lo + hi + 1) >> 1; if (fs[mid].t <= T) lo = mid; else hi = mid - 1; }
+  return lo;
+}
+function redraw() {
+  if (!sim) { draw(START_FRAME, 0); return; }
+  const i = frameAt(playT); draw(sim.frames[i], i);
+}
+
+// ===================== คะแนน =====================
+function scoreAt(T) {
+  const ev = sim ? sim.events.filter((e) => e.t <= T + 1e-9) : [];
+  const zones = new Set(ev.filter((e) => e.type === 'zone').map((e) => e.n));
+  const cans = new Set(ev.filter((e) => e.type === 'can').map((e) => e.n));
+  return {
+    ev, zones, cans, started: ev.some((e) => e.type === 'start'), bonus: ev.some((e) => e.type === 'bonus'),
+    touches: ev.filter((e) => e.type === 'line').length, total: ev.reduce((a, e) => a + e.points, 0),
+  };
+}
+function renderScore(T, final) {
+  const s = scoreAt(T);
+  $('total').textContent = s.total;
+  $('clock').textContent = (final && sim ? sim.result.time : Math.min(T, sim ? sim.result.time : 0)).toFixed(1);
+  const order = [8, 7, 6, 5, 1, 2, 3, 4];
+  $('tiles').innerHTML = order.map((n) => {
+    if (n === 1) return '<div class="tile start' + (s.started ? ' reached' : '') + '"><b>1</b><i class="z">' + (s.started ? 'ออกตัวแล้ว' : 'จุดเริ่ม') + '</i></div>';
+    const z = s.zones.has(n), c = s.cans.has(n);
+    return '<div class="tile' + (z ? ' reached' : '') + (c ? ' out' : '') + '"><b>' + n + '</b>' +
+      '<i class="z">' + (z ? 'ถึงแล้ว' : 'ยังไม่ถึง') + '</i><i class="c">' + (c ? 'ดันออกแล้ว' : 'กระป๋องอยู่') + '</i></div>';
+  }).join('');
+  const P = QB.POINTS;
+  const rows = [
+    ['ออกตัว', s.started ? 'ได้' : 'ยังไม่ออก', s.started ? P.start : 0],
+    ['ไปถึงพื้นที่เขียว', s.zones.size + '/' + QB.ZONES, s.zones.size * P.zone],
+    ['ดันกระป๋องออก', s.cans.size + '/' + QB.CANS, s.cans.size * P.can],
+    ['โบนัสครบทุกช่อง', s.bonus ? 'ได้' : 'ยังไม่ได้', s.bonus ? P.bonus : 0],
+    ['แตะเส้นดำ', s.touches + ' ครั้ง (ไม่หักคะแนน)', s.touches * P.line],
+  ];
+  $('rows').innerHTML = rows.map((r) => '<tr><td>' + r[0] + '</td><td>' + r[1] + '</td><td>' + r[2] + '</td></tr>').join('');
+  const log = $('log');
+  if (!sim) { log.innerHTML = '<li class="empty">กด “จำลอง” เพื่อดูหุ่นวิ่งและคะแนนทีละขั้น</li>'; return; }
+  const shown = s.ev;
+  if (log.childElementCount !== shown.length || log.querySelector('.empty')) {
+    log.innerHTML = shown.map((e) => '<li class="' + e.type + '"><span class="t">' + e.t.toFixed(1) + ' วิ</span><span class="m">' +
+      e.msg.replace(/</g, '&lt;') + '</span><span class="p">' + (e.points ? '+' + e.points : '') + '</span></li>').join('');
+    log.scrollTop = log.scrollHeight;
+  }
+}
+
+// ===================== เล่นแอนิเมชัน =====================
+function highlight(id) { if (lit !== id) { ws.highlightBlock(id || null); lit = id; } }
+function showStart() { sim = null; playT = 0; highlight(null); redraw(); renderScore(0, false); }
+function stopPlayback() { playing = false; }
+function startSim() {
+  if (!prog.steps.length) { flashNote('ยังไม่มีคำสั่ง ลากบล็อกจากแถบซ้ายมาต่อใต้ “เมื่อเริ่ม”'); return; }
+  sim = QB.run(prog.steps); sim.ids = prog.ids.slice();
+  playT = 0; playing = true; lastStamp = 0;
+  requestAnimationFrame(tick);
+}
+function tick(stamp) {
+  if (!playing) return;
+  if (lastStamp) playT += Math.min(0.1, (stamp - lastStamp) / 1000) * mult;
+  lastStamp = stamp;
+  const end = sim.frames[sim.frames.length - 1].t;
+  if (playT >= end) { finish(); return; }
+  const i = frameAt(playT);
+  draw(sim.frames[i], i);
+  highlight(sim.ids[sim.frames[i].s]);
+  renderScore(playT, false);
+  requestAnimationFrame(tick);
+}
+function finish() {
+  playing = false;
+  playT = sim.frames[sim.frames.length - 1].t + 1;   // รวมเหตุการณ์โบนัสตอนจบ
+  redraw(); highlight(null); renderScore(playT, true);
+}
+function flashNote(msg) { const li = '<li class="end"><span class="t"></span><span class="m">' + msg + '</span><span class="p"></span></li>'; $('log').innerHTML = li; }
+
+$('run').onclick = startSim;
+$('skip').onclick = () => { if (!sim) { if (!prog.steps.length) return startSim(); sim = QB.run(prog.steps); sim.ids = prog.ids.slice(); } finish(); };
+$('reset').onclick = () => { stopPlayback(); showStart(); };
+for (const b of document.querySelectorAll('.seg button')) b.onclick = () => {
+  mult = Number(b.dataset.x);
+  for (const o of document.querySelectorAll('.seg button')) o.setAttribute('aria-pressed', String(o === b));
+};
+
+// ===================== โปรแกรมแบบตัวอักษร =====================
+$('textToggle').onclick = () => {
+  const open = $('textPanel').hidden;
+  $('textPanel').hidden = !open; $('textToggle').setAttribute('aria-expanded', String(open));
+  if (open) { $('textIn').value = QB.toText(prog.steps); $('textErr').textContent = ''; $('textIn').focus(); }
+  Blockly.svgResize(ws);
+};
+$('textApply').onclick = () => {
+  try {
+    const steps = QB.parse($('textIn').value);
+    if (steps.length > MAX_STEPS) throw new Error('คำสั่งเกิน ' + MAX_STEPS + ' ขั้น');
+    $('textErr').textContent = '';
+    loadState(chainState(steps));
+  } catch (e) { $('textErr').textContent = e.message; }
+};
+$('textCopy').onclick = async () => {
+  const t = QB.toText(prog.steps);
+  try { await navigator.clipboard.writeText(t); $('textErr').textContent = 'คัดลอกแล้ว'; }
+  catch (e) { $('textIn').select(); $('textErr').textContent = 'กด Ctrl+C เพื่อคัดลอก'; }
+};
+
+// ===================== Bluetooth: ส่งโปรแกรมไปหุ่น =====================
+// โปรโตคอล (ข้อความละไม่เกิน 20 ไบต์): N = เริ่มโปรแกรมใหม่ → OK0, +F33 R F30 = เพิ่มคำสั่ง → OK<จำนวน>,
+// E<จำนวน> = ส่งครบ → READY<จำนวน>, G = เริ่มวิ่ง → RUN, S<ขั้น>, DONE <วินาที>, X = หยุด → STOP, P → R
+const UART = '6e400001-b5a3-f393-e0a9-e50e24dcca9e';
+const TO_ROBOT = '6e400002-b5a3-f393-e0a9-e50e24dcca9e';
+const FROM_ROBOT = '6e400003-b5a3-f393-e0a9-e50e24dcca9e';
+let device = null, toRobot = null, online = false, busy = false, running = false, runStart = 0, runTimer = 0;
+const waiters = [];
+function btStatus(msg, kind) { const el = $('btStatus'); el.textContent = msg; el.className = 'status' + (kind ? ' ' + kind : ''); }
+function updateRobotButtons() {
+  $('btSend').disabled = !online || busy || running || !prog.steps.length || prog.steps.length > MAX_STEPS;
+  $('btGo').disabled = !online || busy || running || sentText === null;
+  $('btStop').disabled = !online;
+  if (online && !busy && !running && sentText !== null && sentText !== QB.toText(prog.steps))
+    btStatus('บล็อกเปลี่ยนไปแล้ว โปรแกรมในหุ่นยังเป็นชุดเก่า กด “ส่งโปรแกรมไปหุ่น” อีกครั้ง');
+}
+async function write(text) {
+  const data = new TextEncoder().encode(text);
+  if (toRobot.writeValueWithResponse) await toRobot.writeValueWithResponse(data); else await toRobot.writeValue(data);
+}
+function waitFor(test, ms) {
+  return new Promise((resolve, reject) => {
+    const w = { test, resolve };
+    waiters.push(w);
+    setTimeout(() => { const i = waiters.indexOf(w); if (i >= 0) { waiters.splice(i, 1); reject(new Error('หุ่นไม่ตอบ')); } }, ms || 2500);
+  });
+}
+async function ask(text, test) { const wait = waitFor(test); await write(text); return wait; }
+function fromRobot(raw) {
+  const text = raw.trim();
+  for (const w of waiters.slice()) if (w.test(text)) { waiters.splice(waiters.indexOf(w), 1); w.resolve(text); }
+  if (text === 'RUN') {
+    running = true; runStart = performance.now();
+    clearInterval(runTimer); runTimer = setInterval(() => { $('btTimer').textContent = ((performance.now() - runStart) / 1000).toFixed(1) + ' วิ'; }, 100);
+    btStatus('หุ่นกำลังวิ่ง…'); updateRobotButtons();
+  } else if (/^S\d+$/.test(text)) {
+    const i = Number(text.slice(1));
+    if (sentText === QB.toText(prog.steps)) highlight(prog.ids[i]);
+    btStatus('หุ่นกำลังทำคำสั่งที่ ' + (i + 1) + (sentText ? '/' + QB.parse(sentText).length : ''));
+  } else if (text.startsWith('DONE')) {
+    endRun(); const sec = text.slice(4).trim();
+    $('btTimer').textContent = sec + ' วิ';
+    btStatus('หุ่นวิ่งจบ ใช้เวลา ' + sec + ' วินาที (เวลาจากหุ่น)', 'ok');
+  } else if (text === 'STOP') {
+    endRun(); btStatus('หยุดหุ่นแล้ว');
+  } else if (text === 'NOPROG') {
+    btStatus('หุ่นยังไม่มีโปรแกรม กด “ส่งโปรแกรมไปหุ่น” ก่อน', 'err');
+  }
+}
+function endRun() { running = false; clearInterval(runTimer); highlight(null); updateRobotButtons(); }
+async function connect() {
+  if (!window.isSecureContext) { btStatus('ต้องเปิดหน้านี้ผ่าน https เช่น GitHub Pages จึงจะใช้ Bluetooth ได้', 'err'); return; }
+  if (!navigator.bluetooth) { btStatus('เบราว์เซอร์นี้ใช้ Bluetooth ไม่ได้ · Android และคอมพิวเตอร์ใช้ Chrome · iPhone ใช้แอป Bluefy', 'err'); return; }
+  try {
+    if (device && device.gatt.connected) device.gatt.disconnect();
+    device = await navigator.bluetooth.requestDevice({ filters: [{ services: [UART] }] });
+    device.addEventListener('gattserverdisconnected', lost);
+    btStatus('กำลังเชื่อมต่อ…');
+    const server = await device.gatt.connect();
+    const service = await server.getPrimaryService(UART);
+    toRobot = await service.getCharacteristic(TO_ROBOT);
+    const listen = await service.getCharacteristic(FROM_ROBOT);
+    await listen.startNotifications();
+    listen.addEventListener('characteristicvaluechanged', (e) => fromRobot(new TextDecoder().decode(e.target.value)));
+    online = true; sentText = null;
+    await ask('P', (t) => t === 'R');
+    $('btConnect').textContent = 'เปลี่ยนหุ่น';
+    btStatus('เชื่อมต่อ ' + (device.name || 'หุ่น') + ' แล้ว กด “ส่งโปรแกรมไปหุ่น”', 'ok');
+  } catch (e) {
+    if (e && e.name === 'NotFoundError') { if (!online) btStatus('ยังไม่ได้เชื่อมต่อ'); return; }
+    btStatus('เชื่อมต่อไม่สำเร็จ: ' + (e && e.message ? e.message : e) + ' · ลองกด “เชื่อมต่อหุ่น” อีกครั้ง', 'err');
+    if (device && device.gatt.connected) device.gatt.disconnect(); else lost();
+  }
+  updateRobotButtons();
+}
+function lost() {
+  online = false; busy = false; sentText = null; endRun();
+  $('btConnect').textContent = 'เชื่อมต่อหุ่น';
+  btStatus('หลุดการเชื่อมต่อ กด “เชื่อมต่อหุ่น” อีกครั้ง', 'err');
+  updateRobotButtons();
+}
+function packLines(steps) {
+  const lines = []; let cur = '';
+  for (const tok of QB.toText(steps).split(' ')) {
+    if (cur && ('+' + cur + ' ' + tok).length > 20) { lines.push(cur); cur = tok; } else cur = cur ? cur + ' ' + tok : tok;
+  }
+  if (cur) lines.push(cur);
+  return lines;
+}
+async function sendProgram() {
+  const steps = prog.steps.slice(), text = QB.toText(steps);
+  busy = true; updateRobotButtons();
+  try {
+    btStatus('กำลังส่งโปรแกรม…');
+    await ask('N', (t) => t === 'OK0');
+    let n = 0;
+    for (const line of packLines(steps)) {
+      n += line.split(' ').length;
+      const want = 'OK' + n;
+      await ask('+' + line, (t) => t === want || t.startsWith('ERR'));
+    }
+    const answer = await ask('E' + n, (t) => t.startsWith('READY') || t.startsWith('ERR'));
+    if (answer !== 'READY' + n) throw new Error('หุ่นได้รับคำสั่งไม่ครบ (' + answer + ')');
+    sentText = text;
+    btStatus('หุ่นได้รับ ' + n + ' คำสั่งแล้ว กด “เริ่มวิ่ง” หรือกดปุ่ม UP ที่หุ่น', 'ok');
+  } catch (e) {
+    sentText = null;
+    btStatus('ส่งไม่สำเร็จ: ' + e.message + ' · กดส่งอีกครั้ง', 'err');
+  }
+  busy = false; updateRobotButtons();
+}
+$('btConnect').onclick = connect;
+$('btSend').onclick = sendProgram;
+$('btGo').onclick = async () => { try { await write('G'); } catch (e) { btStatus('สั่งวิ่งไม่สำเร็จ: ' + e.message, 'err'); } };
+$('btStop').onclick = async () => { try { await write('X'); } catch (e) { btStatus('สั่งหยุดไม่สำเร็จ: ' + e.message, 'err'); } };
+
+// ===================== เริ่มหน้า =====================
+(function boot() {
+  let state = null;
+  const p = new URLSearchParams(location.search).get('p');
+  if (p) { try { state = chainState(QB.parse(p)); } catch (e) { /* ลิงก์ผิด ใช้ของที่จำไว้แทน */ } }
+  if (!state) { try { const saved = localStorage.getItem(STORE); if (saved) state = JSON.parse(saved); } catch (e) { state = null; } }
+  if (!state) state = chainState([{ op: 'F', v: 33 }]);
+  try { loadState(state); } catch (e) { loadState(chainState([{ op: 'F', v: 33 }])); }
+  sizeCanvas();
+  window.addEventListener('resize', () => { sizeCanvas(); Blockly.svgResize(ws); });
+  if (document.fonts) document.fonts.ready.then(() => { redraw(); });
+})();
+</script>
+</body>
+</html>
