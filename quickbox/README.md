@@ -1,4 +1,4 @@
-# Dun Dun Box Drop
+# Quick Dun Dun
 
 กิจกรรมแข่งหุ่น MATRIX Mini R4 แบบเร็วๆ: ต่อบล็อกแค่ 6 แบบ จำลองบนสนามดูคะแนน แล้วส่งโปรแกรมไปหุ่นจริงทาง Bluetooth
 

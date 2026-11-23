@@ -1,4 +1,4 @@
-// ทดสอบตัวจำลองและตัวนับคะแนน Dun Dun Box Drop:  node test-engine.js
+// ทดสอบตัวจำลองและตัวนับคะแนน Quick Dun Dun:  node test-engine.js
 const QB = require('./quickbox-engine.js');
 let pass = 0, fail = 0;
 function ok(cond, name, extra) {

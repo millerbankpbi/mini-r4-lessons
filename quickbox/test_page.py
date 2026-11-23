@@ -1,4 +1,4 @@
-# ทดสอบหน้าเว็บ Dun Dun Box Drop ด้วยเบราว์เซอร์จริง (Playwright)
+# ทดสอบหน้าเว็บ Quick Dun Dun ด้วยเบราว์เซอร์จริง (Playwright)
 # วิธีรัน: เปิดเซิร์ฟเวอร์ในโฟลเดอร์นี้ก่อน  python3 -m http.server 8765  แล้ว  python3 test_page.py
 import asyncio, sys
 from playwright.async_api import async_playwright
