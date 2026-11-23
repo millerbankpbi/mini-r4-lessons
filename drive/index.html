@@ -34,6 +34,15 @@ header { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; padding
 #state { color: var(--muted); font-size: 15px; }
 #note { margin: 4px 14px 0; font-size: 14px; color: #B0453A; }
 #note:empty { display: none; }
+/* เลือกวิธีเชื่อมต่อ Bluetooth / WiFi */
+.seg { display: inline-flex; gap: 3px; padding: 3px; border-radius: 999px; background: #DCD4F1; }
+.seg button { border: 0; border-radius: 999px; padding: 7px 14px; font: inherit; font-size: 14px; background: transparent; color: var(--muted); cursor: pointer; }
+.seg button[aria-pressed="true"] { background: var(--card); color: var(--ink); font-weight: 600; }
+#robot { width: 8.5em; padding: 9px 12px; border-radius: 999px; border: 1px solid var(--line); font: inherit; background: var(--card); color: var(--ink); }
+#robot[hidden], .seg[hidden], .help[hidden] { display: none; }
+.help { margin: 6px 14px 0; max-width: 680px; font-size: 13.5px; line-height: 1.55; color: var(--muted); }
+.help p { margin: 2px 0; }
+.help code { background: #fff; padding: 0 4px; border-radius: 4px; }
 
 main { display: flex; flex-wrap: wrap; gap: 22px; justify-content: center; align-items: center; padding: 14px; }
 
@@ -86,10 +95,19 @@ main { display: flex; flex-wrap: wrap; gap: 22px; justify-content: center; align
 </head>
 <body>
 <header>
+  <div class="seg" id="via" role="group" aria-label="วิธีเชื่อมต่อ">
+    <button data-via="ble" aria-pressed="true">Bluetooth</button>
+    <button data-via="net" aria-pressed="false">WiFi</button>
+  </div>
+  <input id="robot" type="text" maxlength="20" autocomplete="off" spellcheck="false" aria-label="ชื่อหุ่น" placeholder="ชื่อหุ่น" hidden>
   <button id="connect">เชื่อมต่อ Bluetooth</button>
   <span id="dot"></span>
   <span id="state">ยังไม่เชื่อมต่อ</span>
 </header>
+<div class="help" id="netHelp" hidden>
+  <p><b>WiFi ผ่านอินเทอร์เน็ต:</b> อัปโหลดหุ่นแบบ <code>USE_WIFI 2</code> ให้หุ่นต่อ WiFi ที่มีอินเทอร์เน็ต (2.4 GHz ใช้ hotspot มือถือได้) แล้วพิมพ์ชื่อหุ่นให้ตรงกับ <code>ROBOT_NAME</code></p>
+  <p><b>สนามไม่มีอินเทอร์เน็ต:</b> อัปโหลดหุ่นแบบ <code>USE_WIFI 1</code> ให้มือถือต่อ WiFi ชื่อเดียวกับหุ่น แล้วเปิด <a href="http://192.168.4.1">http://192.168.4.1</a> (หุ่นส่งหน้าจอยมาเอง)</p>
+</div>
 <p id="note"></p>
 
 <main>
@@ -130,11 +148,18 @@ const TO_ROBOT = '6e400002-b5a3-f393-e0a9-e50e24dcca9e';
 const FROM_ROBOT = '6e400003-b5a3-f393-e0a9-e50e24dcca9e';
 const DEFAULTS = { pl: 50, pr: 50, tu: 180 };  // กำลังล้อซ้าย กำลังล้อขวา และองศาล้อตอนเลี้ยว 90°
 const MOVE_TIMEOUT = 8000;  // ถ้าไม่ได้ยินว่าหุ่นเดินเสร็จภายในเวลานี้ ให้ปุ่มกดได้อีกครั้ง
+// WiFi ผ่านอินเทอร์เน็ต: ส่งผ่าน broker MQTT สาธารณะ หัวข้อ mr4/ชื่อหุ่น/cmd (มือถือ→หุ่น) และ mr4/ชื่อหุ่น/msg (หุ่น→มือถือ)
+const BROKER = new URLSearchParams(location.search).get('broker') || 'wss://broker.hivemq.com:8884/mqtt';
 
 const $ = id => document.getElementById(id);
 const pad = $('pad');
 let online = false, busy = false, busyTimer = 0;
 let toRobot = null, device = null, writing = Promise.resolve();
+let via = 'ble', robotName = 'R4-T01', ws = null, robotSeen = false;
+try {
+  if (localStorage.getItem('r4via') === 'net') via = 'net';
+  robotName = localStorage.getItem('r4name') || robotName;
+} catch (e) {}
 
 // ===== ค่าที่ปรับไว้ (จำไว้ในเครื่อง) =====
 let cfg = load();
@@ -171,7 +196,7 @@ function sendCfg() { if (online) send(`C,${cfg.pl},${cfg.pr},${cfg.tu}`); }
 function setState(text) { $('state').textContent = text; }
 function note(text) { $('note').textContent = text || ''; }
 function refresh() {
-  $('dot').className = !online ? '' : busy ? 'busy' : 'on';
+  $('dot').className = !online ? '' : (busy || (via === 'net' && !robotSeen)) ? 'busy' : 'on';
   pad.classList.toggle('off', !online);
   pad.classList.toggle('busy', online && busy);
 }
@@ -179,10 +204,11 @@ function setBusy(b) {
   busy = b;
   clearTimeout(busyTimer);
   if (b) busyTimer = setTimeout(() => setBusy(false), MOVE_TIMEOUT);
-  setState(!online ? 'ยังไม่เชื่อมต่อ' : (b ? 'หุ่นกำลังเคลื่อนที่…' : 'พร้อม · ' + name()));
+  setState(!online ? 'ยังไม่เชื่อมต่อ' : b ? 'หุ่นกำลังเคลื่อนที่…'
+    : (via === 'net' && !robotSeen && !VIA_WIFI) ? 'ต่อ WiFi แล้ว · รอหุ่น ' + robotName + ' ตอบ' : 'พร้อม · ' + name());
   refresh();
 }
-function name() { return VIA_WIFI ? location.hostname : (device && device.name) || 'หุ่น'; }
+function name() { return VIA_WIFI ? location.hostname : via === 'net' ? robotName : (device && device.name) || 'หุ่น'; }
 
 // ===== ส่งคำสั่ง =====
 // F เดินหน้า, B ถอยหลัง, L เลี้ยวซ้าย, R เลี้ยวขวา, S หยุด
@@ -195,6 +221,10 @@ function command(c) {
 }
 function send(text) {
   if (VIA_WIFI) return sendWifi(text);
+  if (via === 'net') {
+    if (ws && ws.readyState === WebSocket.OPEN) ws.send(MQTT.publish(topic('cmd'), text));
+    return Promise.resolve();
+  }
   // Bluetooth ส่งได้ทีละข้อความ จึงต่อคิวไว้
   writing = writing.then(async () => {
     if (!toRobot) return;
@@ -204,10 +234,16 @@ function send(text) {
   }).catch(() => {});
   return writing;
 }
-// หุ่นตอบกลับ: D = เดินเสร็จหรือหยุดแล้ว, BUSY = ยังเดินอยู่
+// หุ่นตอบกลับ: D = เดินเสร็จหรือหยุดแล้ว, BUSY = ยังเดินอยู่, R = หุ่นพร้อม (ตอบ P หรือเพิ่งต่อเน็ตได้)
 function fromRobot(text) {
   text = text.trim();
   if (text === 'D') setBusy(false);
+  if (text === 'R') {
+    const first = !robotSeen;
+    robotSeen = true;
+    if (via === 'net' && first) sendCfg();  // หุ่นเพิ่งตอบ ส่งค่าที่ปรับไว้ให้อีกครั้ง
+    setBusy(busy);
+  }
 }
 
 // ===== Bluetooth =====
@@ -237,9 +273,91 @@ async function connectBluetooth() {
   }
 }
 function lost() {
-  online = false; toRobot = null;
-  $('connect').textContent = 'เชื่อมต่อ Bluetooth';
+  online = false; toRobot = null; robotSeen = false;
+  $('connect').textContent = via === 'net' ? 'เชื่อมต่อ WiFi' : 'เชื่อมต่อ Bluetooth';
   setBusy(false);
+}
+
+// ===== WiFi ผ่านอินเทอร์เน็ต (MQTT บน WebSocket) =====
+const MQTT = {
+  // แพ็กเก็ต = ไบต์ชนิด + ความยาว (ไบต์ละ 7 บิต) + เนื้อหา
+  packet(type, body) {
+    const head = [type];
+    let n = body.length;
+    do { head.push((n % 128) + (n >= 128 ? 128 : 0)); n = Math.floor(n / 128); } while (n > 0);
+    return new Uint8Array([...head, ...body]);
+  },
+  str(s) { const b = new TextEncoder().encode(s); return [b.length >> 8, b.length & 255, ...b]; },
+  connect(id) { return this.packet(0x10, [...this.str('MQTT'), 4, 2, 0, 30, ...this.str(id)]); },
+  publish(topic, text) { return this.packet(0x30, [...this.str(topic), ...new TextEncoder().encode(text)]); },
+  subscribe(topic) { return this.packet(0x82, [0, 1, ...this.str(topic), 0]); },
+  // อ่านแพ็กเก็ตที่มาครบแล้ว 1 อัน (ยังไม่ครบ = null)
+  decode(b) {
+    let len = 0, i = 1;
+    for (let mul = 1; ; mul *= 128) {
+      if (i >= b.length) return null;
+      len += (b[i] & 127) * mul;
+      if (b[i++] < 128) break;
+    }
+    if (b.length < i + len) return null;
+    const p = { type: b[0] >> 4, size: i + len, body: b.slice(i, i + len) };
+    if (p.type === 3) {
+      const n = (p.body[0] << 8) + p.body[1], start = 2 + n + ((b[0] & 6) ? 2 : 0);
+      p.topic = new TextDecoder().decode(p.body.slice(2, 2 + n));
+      p.text = new TextDecoder().decode(p.body.slice(start));
+    }
+    return p;
+  },
+};
+function topic(end) { return 'mr4/' + robotName + '/' + end; }
+
+function connectNet() {
+  note('');
+  const typed = $('robot').value.trim();
+  if (!/^[A-Za-z0-9_-]{1,20}$/.test(typed)) { note('ชื่อหุ่นใช้ได้เฉพาะตัวอังกฤษ ตัวเลข - และ _ เช่น R4-T01'); return; }
+  robotName = typed;
+  try { localStorage.setItem('r4name', robotName); } catch (e) {}
+  if (ws) { const old = ws; ws = null; old.close(); lost(); }
+  setState('กำลังเชื่อมต่อ…');
+  const sock = new WebSocket(BROKER, 'mqtt');
+  let buf = new Uint8Array(0), ping = 0;
+  ws = sock;
+  sock.binaryType = 'arraybuffer';
+  sock.onopen = () => sock.send(MQTT.connect('r4drive-' + Math.random().toString(36).slice(2, 8)));
+  sock.onerror = () => note('ต่อ WiFi (MQTT) ไม่ได้ ตรวจว่ามือถือต่ออินเทอร์เน็ตอยู่');
+  sock.onclose = () => { clearInterval(ping); if (ws === sock) { ws = null; lost(); } };
+  sock.onmessage = (e) => {
+    buf = new Uint8Array([...buf, ...new Uint8Array(e.data)]);
+    for (let p; (p = MQTT.decode(buf)); buf = buf.slice(p.size)) {
+      if (p.type === 2 && p.body[1] !== 0) { note('broker ไม่รับการเชื่อมต่อ'); sock.close(); }
+      else if (p.type === 2) {
+        sock.send(MQTT.subscribe(topic('msg')));
+        ping = setInterval(() => sock.readyState === WebSocket.OPEN && sock.send(new Uint8Array([0xc0, 0])), 15000);
+        online = true; robotSeen = false;
+        $('connect').textContent = 'ต่อใหม่';
+        setBusy(false);
+        send('P');   // ถามว่าหุ่นอยู่ไหม หุ่นจะตอบ R
+        sendCfg();
+      } else if (p.type === 3 && p.topic === topic('msg')) fromRobot(p.text);
+    }
+  };
+}
+
+// ===== เลือก Bluetooth / WiFi =====
+function setVia(v) {
+  if (v === via && $('connect').dataset.ready) return;
+  if (online && !VIA_WIFI) {  // เปลี่ยนวิธี: ตัดการเชื่อมต่อเดิมก่อน
+    if (device && device.gatt.connected) device.gatt.disconnect();
+    if (ws) { const old = ws; ws = null; old.close(); }
+  }
+  via = v;
+  try { localStorage.setItem('r4via', v); } catch (e) {}
+  for (const b of document.querySelectorAll('#via button')) b.setAttribute('aria-pressed', String(b.dataset.via === v));
+  $('robot').hidden = v !== 'net';
+  $('netHelp').hidden = v !== 'net';
+  $('connect').dataset.ready = '1';
+  note('');
+  lost();
 }
 
 // ===== WiFi (หน้าที่หุ่นส่งมา) =====
@@ -287,12 +405,15 @@ document.addEventListener('keydown', e => {
 showCfg();
 if (VIA_WIFI) {
   $('connect').hidden = true;
+  $('via').hidden = true;
   online = true;
   setBusy(false);
   sendCfg();
 } else {
-  $('connect').addEventListener('click', connectBluetooth);
-  setBusy(false);
+  $('robot').value = robotName;
+  for (const b of document.querySelectorAll('#via button')) b.addEventListener('click', () => setVia(b.dataset.via));
+  $('connect').addEventListener('click', () => (via === 'net' ? connectNet() : connectBluetooth()));
+  setVia(via);
 }
 </script>
 </body>
