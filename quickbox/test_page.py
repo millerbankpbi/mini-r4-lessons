@@ -72,6 +72,15 @@ async def main():
         ok(not await pg.evaluate("document.body.classList.contains('sim-open')") and not await pg.is_visible('#run'),
            'เปิดมา ตัวจำลองย่ออยู่ (พื้นที่ต่อบล็อกใหญ่)')
         ok(await pg.evaluate("$('blockly').clientWidth") > 900, 'พื้นที่ต่อบล็อกกว้างเกิน 900 px บนจอคอม', await pg.evaluate("$('blockly').clientWidth"))
+        # แถบหุ่นจริงด้านบน: เล็กลง และพับ/กางได้
+        ok(await pg.evaluate("$('topbar').offsetHeight") <= 60, 'จอคอม: แถบบนสูงไม่เกิน 60 px', await pg.evaluate("$('topbar').offsetHeight"))
+        ok(await pg.is_visible('#btConnect') and await pg.text_content('#rToggleText') == 'ซ่อนปุ่มหุ่น', 'จอคอม: เปิดมาเห็นปุ่มหุ่น และมีปุ่ม "ซ่อนปุ่มหุ่น"')
+        await pg.click('#rToggle'); await pg.wait_for_timeout(200)
+        ok(not await pg.is_visible('#btConnect') and await pg.text_content('#rToggleText') == 'ต่อหุ่นจริง', 'กดซ่อน: ปุ่มหุ่นหายไป เหลือปุ่ม "ต่อหุ่นจริง"')
+        await pg.reload(); await pg.wait_for_timeout(500)
+        ok(not await pg.is_visible('#btConnect'), 'รีเฟรชแล้วยังจำว่าซ่อนไว้')
+        await pg.click('#rToggle'); await pg.wait_for_timeout(200)
+        ok(await pg.is_visible('#btConnect'), 'กด "ต่อหุ่นจริง" แล้วปุ่มหุ่นกลับมา')
 
         # แก้เป็นตัวอักษร → สร้างบล็อก
         await pg.click('#textToggle')
@@ -151,6 +160,9 @@ async def main():
         await pg.click('#btConnect'); await pg.wait_for_timeout(300)
         ok('next' in await pg.get_attribute('#btSend', 'class') and 'next' not in await pg.get_attribute('#btConnect', 'class'), 'เชื่อมต่อแล้ว: วงแสงย้ายไปที่ปุ่มส่งโค้ด')
         ok(await pg.text_content('#btConnectLabel') == 'QB-T01', 'ปุ่มเชื่อมต่อแสดงชื่อหุ่นที่ต่ออยู่')
+        await pg.click('#rToggle'); await pg.wait_for_timeout(150)
+        ok(await pg.text_content('#rToggleText') == 'หุ่น QB-T01', 'พับแถบไว้ ก็ยังเห็นว่าต่อหุ่นตัวไหนอยู่', await pg.text_content('#rToggleText'))
+        await pg.click('#rToggle'); await pg.wait_for_timeout(150)
         ok('เชื่อมต่อ QB-T01 แล้ว' in await pg.text_content('#btStatus'), 'เชื่อมต่อหุ่นได้', await pg.text_content('#btStatus'))
         ok(await pg.is_disabled('#btGo'), 'ยังไม่ได้ส่งโปรแกรม ปุ่มเริ่มวิ่งกดไม่ได้')
         await pg.click('#textToggle'); await pg.fill('#textIn', FULL); await pg.click('#textApply'); await pg.wait_for_timeout(400)
@@ -191,6 +203,12 @@ async def main():
         # มือถือ
         m = await b.new_page(viewport={'width': 390, 'height': 844}, device_scale_factor=2)
         await m.goto(URL + '?p=' + FULL.replace(' ', '+')); await m.wait_for_timeout(600)
+        ok(await m.evaluate("$('topbar').offsetHeight") <= 48 and not await m.is_visible('#btConnect') and await m.text_content('#rToggleText') == 'ต่อหุ่นจริง',
+           'มือถือ: แถบบนพับไว้ก่อน สูงไม่เกิน 48 px มีปุ่ม "ต่อหุ่นจริง"', await m.evaluate("$('topbar').offsetHeight"))
+        await m.click('#rToggle'); await m.wait_for_timeout(250)
+        ok(await m.is_visible('#btConnect') and await m.evaluate("$('topbar').offsetHeight") <= 120, 'มือถือ: กดแล้วปุ่มหุ่นกางออก (สูงไม่เกิน 120 px)',
+           await m.evaluate("$('topbar').offsetHeight"))
+        await m.click('#rToggle'); await m.wait_for_timeout(250)
         h = await m.evaluate("$('blockly').getBoundingClientRect().height")
         ok(h > 844 * 0.55, 'มือถือ: พื้นที่ต่อบล็อกสูงเกินครึ่งจอ', h)
         strip = await m.evaluate("(() => { const r = $('arena').getBoundingClientRect(); return [Math.round(r.bottom), Math.round(r.height)]; })()")
