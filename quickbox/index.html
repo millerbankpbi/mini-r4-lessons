@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Quick Box Drop · เขียนบล็อก จำลอง แล้วส่งไปหุ่น Mini R4</title>
+<title>Dun Dun Box Drop · เขียนบล็อก จำลอง แล้วส่งไปหุ่น Mini R4</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@500&family=IBM+Plex+Sans+Thai:wght@400;500;600;700&family=Mitr:wght@500;600&display=swap" rel="stylesheet">
@@ -11,7 +11,7 @@
   :root {
     --ink: #13233f; --ink-2: #4c5c78; --board: #e3e8ef; --panel: #ffffff; --rule: #cdd5e0;
     --green: #2e9e4f; --green-soft: #dcf1e2; --yellow: #ffcc1f; --red: #d62839;
-    --blue: #1f5fd6; --orange: #d9731a;
+    --blue: #1f5fd6; --orange: #d9731a; --purple: #7a3fe0;
     --display: 'Mitr', 'IBM Plex Sans Thai', system-ui, sans-serif;
     --body: 'IBM Plex Sans Thai', system-ui, -apple-system, 'Segoe UI', sans-serif;
     --mono: 'IBM Plex Mono', ui-monospace, Menlo, Consolas, monospace;
@@ -21,13 +21,50 @@
   button { font: inherit; color: inherit; }
   :focus-visible { outline: 3px solid var(--blue); outline-offset: 2px; }
 
-  header { display: flex; align-items: baseline; gap: 14px; flex-wrap: wrap; padding: 14px 20px 10px; }
-  header h1 { margin: 0; font: 600 26px/1.1 var(--display); letter-spacing: .01em; }
-  header p { margin: 0; color: var(--ink-2); font-size: 15px; }
-  header a { margin-left: auto; color: var(--ink-2); font-size: 14px; }
+  /* แถบบนสุด: ชื่อกิจกรรม + ควบคุมหุ่นจริง ติดอยู่ด้านบนตลอด */
+  .topbar { position: sticky; top: 0; z-index: 30; display: flex; align-items: center; gap: 14px 18px;
+            padding: 10px 20px; margin-bottom: 14px; background: var(--panel); box-shadow: 0 1px 0 var(--rule), 0 6px 18px rgba(19,35,63,.06); }
+  .brand h1 { margin: 0; font: 600 25px/1.1 var(--display); letter-spacing: .01em; white-space: nowrap; }
+  .brand p { margin: 2px 0 0; color: var(--ink-2); font-size: 13px; white-space: nowrap; }
+  .brand a { color: var(--ink-2); }
+  .status { flex: 1; min-width: 0; margin: 0; font-size: 14px; line-height: 1.4; display: flex; gap: 8px; align-items: baseline; }
+  .status .dot { flex: none; width: 10px; height: 10px; border-radius: 50%; background: #9aa6b8; transform: translateY(1px); }
+  .status.linked .dot { background: var(--blue); }
+  .status.ok .dot, .status.run .dot { background: var(--green); }
+  .status.ok { color: #17602c; }
+  .status.err { color: var(--red); }
+  .status.err .dot { background: var(--red); }
+  .rbtns { display: flex; gap: 10px; align-items: stretch; }
+  .rb { display: inline-flex; align-items: center; justify-content: center; gap: 8px; border: 0; border-radius: 14px;
+        padding: 10px 16px; font: 500 17px/1.1 var(--display); color: #fff; cursor: pointer; white-space: nowrap;
+        box-shadow: 0 4px 0 rgba(0,0,0,.22); transition: transform .08s, box-shadow .08s, filter .15s; }
+  .rb svg { width: 24px; height: 24px; flex: none; }
+  .rb:hover { filter: brightness(1.08); }
+  .rb:active { transform: translateY(3px); box-shadow: 0 1px 0 rgba(0,0,0,.22); }
+  .rb.connect { background: var(--blue); }
+  .rb.connect.linked { background: #e4ecff; color: var(--blue); box-shadow: inset 0 0 0 2px var(--blue); }
+  .rb.send { background: var(--purple); }
+  .rb.run { background: var(--yellow); color: var(--ink); font-size: 19px; padding: 8px 22px 8px 16px; --eye: var(--yellow); }
+  .rb.run svg { width: 36px; height: 36px; }
+  .rb.run.running { background: var(--green); color: #fff; --eye: var(--green); }
+  .rb.stop { background: var(--red); }
+  .rb:disabled { opacity: .4; filter: saturate(.5); cursor: not-allowed; box-shadow: none; transform: none; }
+  /* ตอนหุ่นวิ่ง ปุ่มหุ่นยนต์สีเขียวสดพร้อมเวลา ไม่จางแบบปุ่มที่กดไม่ได้ */
+  .rb.run.running:disabled { opacity: 1; filter: none; cursor: default; box-shadow: 0 4px 0 rgba(0,0,0,.22), 0 0 0 5px rgba(46,158,79,.28); }
+  .rb .num { font-variant-numeric: tabular-nums; }
+  /* ปุ่มที่ควรกดต่อไป: มีวงแสงเหลืองกะพริบเบาๆ */
+  .rb.next { animation: nudge 1.6s ease-in-out infinite; }
+  @keyframes nudge { 0%, 100% { box-shadow: 0 4px 0 rgba(0,0,0,.22), 0 0 0 0 rgba(255,204,31,0); }
+                     50% { box-shadow: 0 4px 0 rgba(0,0,0,.22), 0 0 0 6px rgba(255,204,31,.85); } }
+  .rb.run.running svg { animation: drive .45s ease-in-out infinite alternate; }
+  @keyframes drive { from { transform: translateY(0) rotate(-4deg); } to { transform: translateY(-3px) rotate(4deg); } }
+  @media (prefers-reduced-motion: reduce) {
+    .rb.next { animation: none; box-shadow: 0 4px 0 rgba(0,0,0,.22), 0 0 0 4px rgba(255,204,31,.9); }
+    .rb.run.running svg { animation: none; }
+  }
 
   .layout { display: grid; grid-template-columns: minmax(0, 1fr) minmax(340px, 520px); gap: 16px; padding: 0 20px 24px; align-items: start; }
-  .editor { position: sticky; top: 12px; height: calc(100vh - 86px); min-height: 440px; display: flex; flex-direction: column;
+  .editor { position: sticky; top: calc(var(--hdr, 72px) + 12px); height: calc(100vh - var(--hdr, 72px) - 26px); min-height: 440px; display: flex; flex-direction: column;
             background: var(--panel); border-radius: 14px; overflow: hidden; box-shadow: 0 1px 0 var(--rule); }
   #blockly { flex: 1; min-height: 0; }
   .progbar { display: flex; align-items: center; gap: 10px; padding: 8px 12px; border-top: 1px solid var(--rule); font-size: 14px; }
@@ -87,11 +124,6 @@
   details summary { cursor: pointer; color: var(--ink); font-weight: 600; }
   details ul { margin: 6px 0 0; padding-left: 20px; }
 
-  .status { margin: 0 0 10px; font-size: 15px; }
-  .status.ok { color: #17602c; }
-  .status.err { color: var(--red); }
-  .hint { margin: 10px 0 0; font-size: 13.5px; color: var(--ink-2); }
-  #btTimer { font: 500 20px var(--display); font-variant-numeric: tabular-nums; margin-left: auto; }
 
   #log { list-style: none; margin: 0; padding: 0; max-height: 260px; overflow: auto; font-size: 14px; }
   #log li { display: grid; grid-template-columns: 52px 1fr auto; gap: 8px; padding: 4px 0; border-top: 1px solid #eef1f5; }
@@ -105,7 +137,16 @@
 
   @media (max-width: 900px) {
     .layout { grid-template-columns: 1fr; padding: 0 10px 20px; }
-    header { padding: 12px 12px 8px; }
+    .topbar { display: grid; grid-template-columns: 1fr; gap: 8px; padding: 8px 10px 9px; margin-bottom: 10px; }
+    .brand { display: flex; align-items: baseline; gap: 10px; }
+    .brand h1 { font-size: 21px; }
+    .brand p { margin-left: auto; }
+    .brand .how { display: none; }
+    .rbtns { order: 2; display: grid; grid-template-columns: 1fr 1fr 1.3fr .9fr; gap: 7px; }
+    .rb { flex-direction: column; gap: 3px; padding: 7px 4px 6px; font-size: 14px; border-radius: 12px; }
+    .rb.run { font-size: 15px; padding: 4px 4px 6px; }
+    .rb.run svg { width: 30px; height: 30px; }
+    .status { order: 3; font-size: 13px; }
     .editor { position: static; height: 62vh; min-height: 380px; }
     .total { font-size: 54px; }
   }
@@ -115,10 +156,18 @@
 <script src="quickbox-engine.js"></script>
 </head>
 <body>
-<header>
-  <h1>Quick Box Drop</h1>
-  <p>ต่อบล็อกใต้ “เมื่อเริ่ม” กดจำลองดูคะแนน แล้วส่งโปรแกรมไปหุ่น</p>
-  <a href="../">บทเรียน Mini R4</a>
+<header class="topbar" id="topbar">
+  <div class="brand">
+    <h1>Dun Dun Box Drop</h1>
+    <p><span class="how">ต่อบล็อก → จำลองดูคะแนน → ส่งโค้ดไปหุ่น · </span><a href="../">บทเรียน Mini R4</a></p>
+  </div>
+  <div class="rbtns" role="group" aria-label="หุ่นจริง (Bluetooth)">
+    <button class="rb connect next" id="btConnect"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6.5 7.5l11 9-5.5 4.5v-18l5.5 4.5-11 9"/></svg><span id="btConnectLabel">เชื่อมต่อหุ่น</span></button>
+    <button class="rb send" id="btSend" disabled title="ส่งบล็อกชุดนี้ไปเก็บในหุ่น"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 15V3.5M7 8.5l5-5 5 5M4 14.5v4a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-4"/></svg><span>ส่งโค้ด</span></button>
+    <button class="rb run" id="btGo" disabled title="ให้หุ่นวิ่ง (กดปุ่ม UP ที่หุ่นก็ได้)"><svg viewBox="0 0 32 32" aria-hidden="true"><circle cx="16" cy="3.6" r="2.1" fill="currentColor"/><rect x="15" y="4.5" width="2" height="4" fill="currentColor"/><rect x="5" y="8" width="22" height="14.5" rx="4.5" fill="currentColor"/><rect x="2.5" y="12.5" width="3" height="5.5" rx="1.5" fill="currentColor"/><rect x="26.5" y="12.5" width="3" height="5.5" rx="1.5" fill="currentColor"/><circle cx="11.5" cy="14.5" r="2.6" fill="var(--eye)"/><circle cx="20.5" cy="14.5" r="2.6" fill="var(--eye)"/><rect x="12" y="18.3" width="8" height="1.8" rx=".9" fill="var(--eye)"/><rect x="8" y="23.5" width="16" height="3" rx="1.5" fill="currentColor"/><circle cx="10" cy="28.3" r="2.7" fill="currentColor"/><circle cx="22" cy="28.3" r="2.7" fill="currentColor"/></svg><span id="btGoLabel">เริ่มวิ่ง</span></button>
+    <button class="rb stop" id="btStop" disabled title="หุ่นหยุดหลังทำคำสั่งที่กำลังทำเสร็จ ถ้าต้องหยุดทันทีให้กด DOWN ที่หุ่น"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="5.5" y="5.5" width="13" height="13" rx="2.5" fill="currentColor"/></svg><span>หยุด</span></button>
+  </div>
+  <p class="status" id="btStatus" role="status"><span class="dot"></span><span id="btText">ยังไม่ได้เชื่อมต่อหุ่น · คอมพิวเตอร์และ Android ใช้ Chrome · iPhone ใช้แอป Bluefy</span></p>
 </header>
 
 <main class="layout">
@@ -142,7 +191,7 @@
   </section>
 
   <section class="arena" aria-label="สนามและคะแนน">
-    <div class="fieldwrap"><canvas id="field" role="img" aria-label="สนาม Quick Box Drop ขนาด 120 x 120 ซม."></canvas></div>
+    <div class="fieldwrap"><canvas id="field" role="img" aria-label="สนาม Dun Dun Box Drop ขนาด 120 x 120 ซม."></canvas></div>
 
     <div class="row controls">
       <button class="btn go" id="run">▶ จำลอง</button>
@@ -174,21 +223,6 @@
           <li>เวลาในตัวจำลองเป็นค่าประมาณ ใช้เวลาจากหุ่นจริงตอนแข่ง</li>
         </ul>
       </details>
-    </section>
-
-    <section class="card" aria-labelledby="robotTitle">
-      <h2 id="robotTitle">หุ่นจริง (Bluetooth)</h2>
-      <p class="status" id="btStatus" role="status">ยังไม่ได้เชื่อมต่อ</p>
-      <div class="row">
-        <button class="btn bt" id="btConnect">เชื่อมต่อหุ่น</button>
-        <button class="btn" id="btSend" disabled>ส่งโปรแกรมไปหุ่น</button>
-      </div>
-      <div class="row" style="margin-top:8px">
-        <button class="btn" id="btGo" disabled>เริ่มวิ่ง</button>
-        <button class="btn" id="btStop" disabled title="หุ่นหยุดหลังทำคำสั่งที่กำลังทำอยู่เสร็จ">หยุด</button>
-        <span id="btTimer"></span>
-      </div>
-      <p class="hint">Android และคอมพิวเตอร์ใช้ Chrome · iPhone ใช้แอป Bluefy · ส่งโปรแกรมแล้วกดปุ่ม UP ที่หุ่นเพื่อเริ่มวิ่งได้ · ปุ่ม “หยุด” บนเว็บจะหยุดหลังจบคำสั่งที่กำลังทำ ถ้าต้องหยุดทันทีให้กด DOWN ที่หุ่น</p>
     </section>
 
     <section class="card" aria-labelledby="logTitle">
@@ -488,13 +522,22 @@ const TO_ROBOT = '6e400002-b5a3-f393-e0a9-e50e24dcca9e';
 const FROM_ROBOT = '6e400003-b5a3-f393-e0a9-e50e24dcca9e';
 let device = null, toRobot = null, online = false, busy = false, running = false, runStart = 0, runTimer = 0;
 const waiters = [];
-function btStatus(msg, kind) { const el = $('btStatus'); el.textContent = msg; el.className = 'status' + (kind ? ' ' + kind : ''); }
+function btStatus(msg, kind) { $('btText').textContent = msg; $('btStatus').className = 'status' + (kind ? ' ' + kind : ''); }
 function updateRobotButtons() {
+  const fresh = sentText !== null && sentText === QB.toText(prog.steps);
   $('btSend').disabled = !online || busy || running || !prog.steps.length || prog.steps.length > MAX_STEPS;
   $('btGo').disabled = !online || busy || running || sentText === null;
   $('btStop').disabled = !online;
-  if (online && !busy && !running && sentText !== null && sentText !== QB.toText(prog.steps))
-    btStatus('บล็อกเปลี่ยนไปแล้ว โปรแกรมในหุ่นยังเป็นชุดเก่า กด “ส่งโปรแกรมไปหุ่น” อีกครั้ง');
+  // วงแสงบอกว่าควรกดปุ่มไหนต่อ: เชื่อมต่อ → ส่งโค้ด → เริ่มวิ่ง
+  const next = !online ? 'btConnect' : running || busy ? '' : !fresh ? 'btSend' : 'btGo';
+  for (const id of ['btConnect', 'btSend', 'btGo']) $(id).classList.toggle('next', id === next && !$(id).disabled);
+  $('btConnect').classList.toggle('linked', online);
+  $('btConnectLabel').textContent = online ? (device && device.name) || 'เชื่อมต่อแล้ว' : 'เชื่อมต่อหุ่น';
+  $('btConnect').title = online ? 'เชื่อมต่ออยู่ กดเพื่อเปลี่ยนหุ่น' : 'ค้นหาหุ่นทาง Bluetooth';
+  $('btGo').classList.toggle('running', running);
+  if (!running) $('btGoLabel').textContent = 'เริ่มวิ่ง';
+  if (online && !busy && !running && sentText !== null && !fresh)
+    btStatus('บล็อกเปลี่ยนไปแล้ว โค้ดในหุ่นยังเป็นชุดเก่า กด “ส่งโค้ด” อีกครั้ง', 'linked');
 }
 async function write(text) {
   const data = new TextEncoder().encode(text);
@@ -513,20 +556,20 @@ function fromRobot(raw) {
   for (const w of waiters.slice()) if (w.test(text)) { waiters.splice(waiters.indexOf(w), 1); w.resolve(text); }
   if (text === 'RUN') {
     running = true; runStart = performance.now();
-    clearInterval(runTimer); runTimer = setInterval(() => { $('btTimer').textContent = ((performance.now() - runStart) / 1000).toFixed(1) + ' วิ'; }, 100);
-    btStatus('หุ่นกำลังวิ่ง…'); updateRobotButtons();
+    btStatus('หุ่นกำลังวิ่ง…', 'run'); updateRobotButtons();
+    const tickRun = () => { $('btGoLabel').innerHTML = '<span class="num">' + ((performance.now() - runStart) / 1000).toFixed(1) + '</span> วิ'; };
+    tickRun(); clearInterval(runTimer); runTimer = setInterval(tickRun, 100);
   } else if (/^S\d+$/.test(text)) {
     const i = Number(text.slice(1));
     if (sentText === QB.toText(prog.steps)) highlight(prog.ids[i]);
-    btStatus('หุ่นกำลังทำคำสั่งที่ ' + (i + 1) + (sentText ? '/' + QB.parse(sentText).length : ''));
+    btStatus('หุ่นกำลังทำคำสั่งที่ ' + (i + 1) + (sentText ? '/' + QB.parse(sentText).length : ''), 'run');
   } else if (text.startsWith('DONE')) {
     endRun(); const sec = text.slice(4).trim();
-    $('btTimer').textContent = sec + ' วิ';
     btStatus('หุ่นวิ่งจบ ใช้เวลา ' + sec + ' วินาที (เวลาจากหุ่น)', 'ok');
   } else if (text === 'STOP') {
     endRun(); btStatus('หยุดหุ่นแล้ว');
   } else if (text === 'NOPROG') {
-    btStatus('หุ่นยังไม่มีโปรแกรม กด “ส่งโปรแกรมไปหุ่น” ก่อน', 'err');
+    btStatus('หุ่นยังไม่มีโปรแกรม กด “ส่งโค้ด” ก่อน', 'err');
   }
 }
 function endRun() { running = false; clearInterval(runTimer); highlight(null); updateRobotButtons(); }
@@ -546,8 +589,7 @@ async function connect() {
     listen.addEventListener('characteristicvaluechanged', (e) => fromRobot(new TextDecoder().decode(e.target.value)));
     online = true; sentText = null;
     await ask('P', (t) => t === 'R');
-    $('btConnect').textContent = 'เปลี่ยนหุ่น';
-    btStatus('เชื่อมต่อ ' + (device.name || 'หุ่น') + ' แล้ว กด “ส่งโปรแกรมไปหุ่น”', 'ok');
+    btStatus('เชื่อมต่อ ' + (device.name || 'หุ่น') + ' แล้ว กด “ส่งโค้ด” เพื่อส่งบล็อกไปหุ่น', 'linked');
   } catch (e) {
     if (e && e.name === 'NotFoundError') { if (!online) btStatus('ยังไม่ได้เชื่อมต่อ'); return; }
     btStatus('เชื่อมต่อไม่สำเร็จ: ' + (e && e.message ? e.message : e) + ' · ลองกด “เชื่อมต่อหุ่น” อีกครั้ง', 'err');
@@ -557,7 +599,6 @@ async function connect() {
 }
 function lost() {
   online = false; busy = false; sentText = null; endRun();
-  $('btConnect').textContent = 'เชื่อมต่อหุ่น';
   btStatus('หลุดการเชื่อมต่อ กด “เชื่อมต่อหุ่น” อีกครั้ง', 'err');
   updateRobotButtons();
 }
@@ -573,7 +614,7 @@ async function sendProgram() {
   const steps = prog.steps.slice(), text = QB.toText(steps);
   busy = true; updateRobotButtons();
   try {
-    btStatus('กำลังส่งโปรแกรม…');
+    btStatus('กำลังส่งโค้ด…', 'linked');
     await ask('N', (t) => t === 'OK0');
     let n = 0;
     for (const line of packLines(steps)) {
@@ -587,14 +628,14 @@ async function sendProgram() {
     btStatus('หุ่นได้รับ ' + n + ' คำสั่งแล้ว กด “เริ่มวิ่ง” หรือกดปุ่ม UP ที่หุ่น', 'ok');
   } catch (e) {
     sentText = null;
-    btStatus('ส่งไม่สำเร็จ: ' + e.message + ' · กดส่งอีกครั้ง', 'err');
+    btStatus('ส่งไม่สำเร็จ: ' + e.message + ' · กด “ส่งโค้ด” อีกครั้ง', 'err');
   }
   busy = false; updateRobotButtons();
 }
 $('btConnect').onclick = connect;
 $('btSend').onclick = sendProgram;
 $('btGo').onclick = async () => { try { await write('G'); } catch (e) { btStatus('สั่งวิ่งไม่สำเร็จ: ' + e.message, 'err'); } };
-$('btStop').onclick = async () => { try { await write('X'); } catch (e) { btStatus('สั่งหยุดไม่สำเร็จ: ' + e.message, 'err'); } };
+$('btStop').onclick = async () => { try { await write('X'); if (running) btStatus('สั่งหยุดแล้ว หุ่นจะหยุดหลังจบคำสั่งนี้ (หยุดทันที: กด DOWN ที่หุ่น)', 'run'); } catch (e) { btStatus('สั่งหยุดไม่สำเร็จ: ' + e.message, 'err'); } };
 
 // ===================== เริ่มหน้า =====================
 (function boot() {
@@ -604,7 +645,10 @@ $('btStop').onclick = async () => { try { await write('X'); } catch (e) { btStat
   if (!state) { try { const saved = localStorage.getItem(STORE); if (saved) state = JSON.parse(saved); } catch (e) { state = null; } }
   if (!state) state = chainState([{ op: 'F', v: 33 }]);
   try { loadState(state); } catch (e) { loadState(chainState([{ op: 'F', v: 33 }])); }
-  sizeCanvas();
+  const setHdr = () => document.documentElement.style.setProperty('--hdr', $('topbar').offsetHeight + 'px');
+  setHdr(); Blockly.svgResize(ws);
+  if (window.ResizeObserver) new ResizeObserver(() => { setHdr(); Blockly.svgResize(ws); }).observe($('topbar'));
+  sizeCanvas(); updateRobotButtons();
   window.addEventListener('resize', () => { sizeCanvas(); Blockly.svgResize(ws); });
   if (document.fonts) document.fonts.ready.then(() => { redraw(); });
 })();

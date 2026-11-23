@@ -1,4 +1,4 @@
-# ทดสอบหน้าเว็บ Quick Box Drop ด้วยเบราว์เซอร์จริง (Playwright)
+# ทดสอบหน้าเว็บ Dun Dun Box Drop ด้วยเบราว์เซอร์จริง (Playwright)
 # วิธีรัน: เปิดเซิร์ฟเวอร์ในโฟลเดอร์นี้ก่อน  python3 -m http.server 8765  แล้ว  python3 test_page.py
 import asyncio, sys
 from playwright.async_api import async_playwright
@@ -100,7 +100,10 @@ async def main():
         ok(await pg.text_content('#progText') == 'F33 R F30', 'เปิดลิงก์ ?p= แล้วได้บล็อกตามลิงก์')
 
         # Bluetooth กับหุ่นปลอม
+        ok('next' in await pg.get_attribute('#btConnect', 'class'), 'ยังไม่เชื่อมต่อ: ปุ่มเชื่อมต่อหุ่นมีวงแสงบอกให้กดก่อน')
         await pg.click('#btConnect'); await pg.wait_for_timeout(300)
+        ok('next' in await pg.get_attribute('#btSend', 'class') and 'next' not in await pg.get_attribute('#btConnect', 'class'), 'เชื่อมต่อแล้ว: วงแสงย้ายไปที่ปุ่มส่งโค้ด')
+        ok(await pg.text_content('#btConnectLabel') == 'QB-T01', 'ปุ่มเชื่อมต่อแสดงชื่อหุ่นที่ต่ออยู่')
         ok('เชื่อมต่อ QB-T01 แล้ว' in await pg.text_content('#btStatus'), 'เชื่อมต่อหุ่นได้', await pg.text_content('#btStatus'))
         ok(await pg.is_disabled('#btGo'), 'ยังไม่ได้ส่งโปรแกรม ปุ่มเริ่มวิ่งกดไม่ได้')
         await pg.click('#textToggle'); await pg.fill('#textIn', FULL); await pg.click('#textApply'); await pg.wait_for_timeout(400)
@@ -108,12 +111,16 @@ async def main():
         robot = await pg.evaluate('window.__robot')
         ok(' '.join(robot['steps']) == FULL, 'หุ่นได้รับคำสั่งครบและเรียงถูก', ' '.join(robot['steps']))
         ok(robot['tooLong'] == 0, 'ทุกข้อความที่ส่งยาวไม่เกิน 20 ไบต์')
+        ok('next' in await pg.get_attribute('#btGo', 'class'), 'ส่งโค้ดแล้ว: วงแสงย้ายไปที่ปุ่มหุ่นยนต์ เริ่มวิ่ง')
         ok('หุ่นได้รับ %d คำสั่งแล้ว' % len(FULL.split()) in await pg.text_content('#btStatus'), 'แจ้งว่าหุ่นได้รับกี่คำสั่ง', await pg.text_content('#btStatus'))
         await pg.click('#btGo'); await pg.wait_for_timeout(300)
+        ok('running' in await pg.get_attribute('#btGo', 'class') and await pg.evaluate("getComputedStyle($('btGo')).opacity") == '1' and 'วิ' in await pg.text_content('#btGoLabel'),
+           'ระหว่างหุ่นวิ่ง ปุ่มหุ่นยนต์เป็นสีเขียวสด ไม่จาง และเดินเวลา', await pg.text_content('#btGoLabel'))
         ok('กำลังทำคำสั่งที่' in await pg.text_content('#btStatus'), 'ระหว่างหุ่นวิ่ง บอกว่ากำลังทำคำสั่งที่เท่าไร', await pg.text_content('#btStatus'))
         ok(await pg.evaluate('lit') is not None, 'ระหว่างหุ่นวิ่ง ไฮไลต์บล็อกที่หุ่นกำลังทำ')
         await pg.wait_for_timeout(1600)
         ok('12.3 วินาที' in await pg.text_content('#btStatus'), 'หุ่นวิ่งจบ แสดงเวลาจากหุ่น', await pg.text_content('#btStatus'))
+        ok(await pg.text_content('#btGoLabel') == 'เริ่มวิ่ง' and 'running' not in await pg.get_attribute('#btGo', 'class'), 'วิ่งจบแล้ว ปุ่มกลับเป็น เริ่มวิ่ง')
         await pg.fill('#textIn', 'F40'); await pg.click('#textApply'); await pg.wait_for_timeout(400)
         ok('ชุดเก่า' in await pg.text_content('#btStatus'), 'แก้บล็อกหลังส่ง เตือนว่าโปรแกรมในหุ่นยังเป็นชุดเก่า', await pg.text_content('#btStatus'))
         await pg.click('#btStop'); await pg.wait_for_timeout(200)
