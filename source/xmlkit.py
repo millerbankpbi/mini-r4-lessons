@@ -49,10 +49,14 @@ def num_slot(inner):
     return inner
 
 
-def P(setup=(), loop=(), aa='2', uart='1', baud='9600'):
-    """A whole program: R4 Begin with Setup and Loop."""
+def P(setup=(), loop=(), aa='2', uart='1', baud='9600', extra=()):
+    """A whole program: R4 Begin with Setup and Loop. extra = top-level hat blocks (full <block ...> xml), placed to the right.
+    The generator emits top-level blocks in y order. BLE needs R4 Begin first (rxChar is declared by "UART enable"), but MQTT needs
+    mqttCallback defined before connectMQTT, so an "on MQTT message" hat is placed above R4 Begin (R4 Begin goes below the hats)."""
     f = {'miniBegin_AA': aa, 'miniBegin_EnUART': uart, 'miniBegin_Baud': baud}
-    return '<xml>' + B('mini_setup', f=f, s={'SUBSTACK': list(setup), 'SUBSTACK2': list(loop)})[:-len('</block>')].replace('<block type="mini_setup">', '<block type="mini_setup" x="10" y="10">', 1) + '</block></xml>'
+    main = B('mini_setup', f=f, s={'SUBSTACK': list(setup), 'SUBSTACK2': list(loop)}).replace('<block type="mini_setup">', '<block type="mini_setup" x="10" y="%d">' % (10 + len(extra) * 300 if any('mini_mqtt_on_message' in h for h in extra) else 10), 1)
+    hats = ''.join(h.replace('<block ', '<block x="520" y="%d" ' % (10 + i * 300), 1) for i, h in enumerate(extra))
+    return '<xml>' + main + hats + '</xml>'
 
 
 # ---- frequently used blocks (all fields set explicitly: block defaults differ from the toolbox) ----
@@ -98,3 +102,91 @@ def op(type_, a, b, names=('NUM1', 'NUM2')):
 
 def cmp(type_, a, b):
     return B(type_, v={'OPERAND1': a, 'OPERAND2': b})
+
+
+# ---- IoT: Bluetooth LE ----
+def ble_setup(name='R4-T01'):
+    """Blocks for Setup: BLE begin, set name, enable UART (needs ble_on_received as a hat in P(extra=...))."""
+    return [B('mini_ble_begin'), B('mini_ble_set_name', v={'NAME': name}), B('mini_ble_uart_enable')]
+
+
+def ble_poll():
+    return B('mini_ble_poll')
+
+
+def ble_connected():
+    return B('mini_ble_connected')
+
+
+def ble_send(v):
+    return B('mini_ble_uart_send', v={'MESSAGE': v})
+
+
+def ble_on_received(stmts):
+    return B('mini_ble_on_received', s={'SUBSTACK': list(stmts)})
+
+
+def ble_data():
+    return B('mini_ble_received_data')
+
+
+# ---- IoT: WiFi + MQTT ----
+def wifi_connect(ssid, pw):
+    return B('mini_wifi_connect', v={'SSID': ssid, 'PASSWORD': pw})
+
+
+def mqtt_connect(client, broker='broker.hivemq.com', port=1883, user='', pw=''):
+    return B('mini_mqtt_connect', v={'BROKER': broker, 'PORT': port, 'CLIENTID': client, 'USERNAME': user, 'PASSWORD': pw})
+
+
+def mqtt_loop():
+    return B('mini_mqtt_loop')
+
+
+def mqtt_subscribe(topic, qos=0):
+    return B('mini_mqtt_subscribe', f={'QOS': qos}, v={'TOPIC': topic})
+
+
+def mqtt_publish(topic, v):
+    return B('mini_mqtt_publish', v={'TOPIC': topic, 'MESSAGE': v})
+
+
+def mqtt_on_message(stmts):
+    return B('mini_mqtt_on_message', s={'SUBSTACK': list(stmts)})
+
+
+def mqtt_msg():
+    return B('mini_mqtt_received_message')
+
+
+def mqtt_connected():
+    return B('mini_mqtt_is_connected')
+
+
+# ---- misc blocks used with remote control ----
+def millis():
+    return B('mini_millis')
+
+
+def mathop(op_, v):
+    return B('operator_mathop', f={'OPERATOR': op_}, v={'NUM': v})
+
+
+def to_float(v):
+    return B('operator_toFloat', v={'NUM': v})
+
+
+def servo(port, angle):
+    return B('mini_RCset', f={'PIN': port}, v={'Angle': angle})
+
+
+def move_sync_time(l, r, secs, brake=True):
+    return B('mini_ddc_runFor_sync', f={'UNIT': 'seconds', 'BrakeType': 'true' if brake else 'false'}, v={'NUM': secs, 'SPEEDL': l, 'SPEEDR': r})
+
+
+def moving(l, r):
+    return B('mini_ddc_on', v={'SPEEDL': l, 'SPEEDR': r})
+
+
+def stop_moving(brake=True):
+    return B('mini_ddc_off', f={'BrakeType': 'true' if brake else 'false'})

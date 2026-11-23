@@ -1,0 +1,87 @@
+/*== base ==*/
+/*@ th=ทั้งหน้า: พื้นม่วงอ่อนลายจุด เต็มจอ ใช้ฟอนต์ของเครื่อง|en=Whole page: lavender dotted background, full screen, the phone's own font|lo=ທັງໜ້າ: ພື້ນສີມ່ວງອ່ອນລາຍຈຸດ ເຕັມຈໍ ໃຊ້ຟອນຂອງເຄື່ອງ */
+* { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+html, body { margin: 0; height: 100%; }
+body {
+  display: flex; flex-direction: column; height: 100dvh; overflow: hidden; box-sizing: border-box;
+  padding: 0 env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+  font: 15px system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; color: #3B3256;
+  background: #ECE8F7 radial-gradient(#cec5e8 1.5px, transparent 1.7px) 0 0 / 22px 22px;
+}
+button { font: inherit; border: 0; cursor: pointer; }
+/*@ th=แถบบน: ปุ่มเชื่อมต่อ จุดสถานะ และข้อความล่าสุด (↑ ส่ง ↓ รับ)|en=Top bar: connect button, status dot and last messages (↑ sent ↓ received)|lo=ແຖບເທິງ: ປຸ່ມເຊື່ອມຕໍ່ ຈຸດສະຖານະ ແລະ ຂໍ້ຄວາມລ່າສຸດ (↑ ສົ່ງ ↓ ຮັບ) */
+#bar { display: flex; align-items: center; gap: 8px; padding: max(8px, env(safe-area-inset-top)) 12px 8px; }
+#connect { flex: none; padding: 8px 16px; border-radius: 99px; background: #3B3256; color: #fff; font-weight: 600; }
+#dot { flex: none; width: 12px; height: 12px; border-radius: 50%; background: #c9c1df; }
+#dot.on { background: #35b37e; }
+#dot.off { background: #EE6B5E; }
+#status { flex: 1; min-width: 0; font-size: 14px; line-height: 1.2; }
+#dot.on + #status { font-weight: 700; }
+#out, #in { max-width: 7em; padding: 3px 8px; border-radius: 8px; background: #fff; font: 13px ui-monospace, monospace; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+#out::before { content: "↑ "; color: #7A5CD6; }
+#in::before { content: "↓ "; color: #22875a; }
+#out:empty, #in:empty, #note:empty { display: none; }
+#note { margin: 0 12px 8px; padding: 8px 12px; border-left: 4px solid #EE6B5E; border-radius: 10px; background: #fff; font-size: 14px; }
+#main { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+@media (orientation: landscape) { #main { flex-direction: row; } }
+/*@ th=พื้นที่ปุ่ม: ไม่เลื่อนจอ ไม่ซูม ไม่เลือกข้อความ ไม่ขึ้นเมนูเมื่อกดค้าง|en=Control area: no scrolling, zooming, text selection or long-press menu|lo=ພື້ນທີ່ປຸ່ມ: ບໍ່ເລື່ອນຈໍ ບໍ່ຊູມ ບໍ່ເລືອກຂໍ້ຄວາມ ບໍ່ຂຶ້ນເມນູເມື່ອກົດຄ້າງ */
+#pad { flex: 1; position: relative; container-type: size; display: flex; align-items: center; justify-content: center; }
+#pad, #pad * { touch-action: none; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }
+.stop { flex: none; width: 76px; height: 76px; border-radius: 50%; background: #EE6B5E; color: #fff; font-weight: 700; box-shadow: 0 6px 16px #EE6B5E66; }
+.stop.held { scale: .93; filter: brightness(1.1); }
+
+/*== round ==*/
+/*@ th=ปุ่มกลมสีเข้ม ลูกศรสามเหลี่ยมสีม่วงอ่อน (หมุนได้ด้วย rotate)|en=Dark round button with a lavender triangle (turn it with rotate)|lo=ປຸ່ມກົມສີເຂັ້ມ ລູກສອນສາມຫຼ່ຽມສີມ່ວງອ່ອນ (ໝຸນໄດ້ດ້ວຍ rotate) */
+.dark { width: 72px; height: 72px; padding: 0; border-radius: 50%; background: #3B3256; box-shadow: 0 6px 16px #3B325655; }
+.dark i { display: block; width: 28px; height: 24px; margin: auto; background: #B7A4EC; clip-path: polygon(50% 0, 100% 100%, 0 100%); }
+.dark.held { scale: .93; background: #54487a; }
+
+/*== dirs ==*/
+/*@ th=วางปุ่ม 4 ทิศเป็นรูปกากบาท ปุ่มหยุดตรงกลาง|en=Lay the 4 buttons out as a cross with stop in the middle|lo=ວາງປຸ່ມ 4 ທິດເປັນຮູບກາກບາດ ປຸ່ມຢຸດຢູ່ກາງ */
+.dirs { display: grid; grid-template-areas: ". up ." "left stop right" ". down ."; gap: 14px; place-items: center; }
+.dirs .dark, .dirs .stop { width: 84px; height: 84px; }
+.up { grid-area: up; }
+.left { grid-area: left; }
+.dirs .stop { grid-area: stop; }
+.right { grid-area: right; }
+.down { grid-area: down; }
+
+/*== stick ==*/
+/*@ th=คันโยก: รางสีขาว เส้นกากบาทบาง ๆ ปุ่มกลมสีขาวมีจุดม่วงตรงกลาง|en=Sticks: white track, thin crosshair, white knob with a lavender centre dot|lo=ຄັນໂຍກ: ຮາງສີຂາວ ເສັ້ນກາກບາດບາງໆ ປຸ່ມກົມສີຂາວມີຈຸດມ່ວງຢູ່ກາງ */
+/*@ th=cqw/cqh = % ของพื้นที่ปุ่ม (ค่าแรกใช้กับเบราว์เซอร์รุ่นเก่า)|en=cqw/cqh = % of the control area (the first value is for older browsers)|lo=cqw/cqh = % ຂອງພື້ນທີ່ປຸ່ມ (ຄ່າທຳອິດໃຊ້ກັບບຣາວເຊີລຸ້ນເກົ່າ) */
+.ctl { width: 100%; height: 100%; display: flex; align-items: center; justify-content: space-evenly; }
+#pad.x .ctl { padding-right: 22%; }
+.stick { position: relative; flex: none; display: grid; place-items: center; background: #fff; box-shadow: 0 8px 24px #3B325626; }
+.stick::before, .stick::after { content: ""; position: absolute; background: #e4ddf4; }
+.stick::before { left: 50%; top: 14%; bottom: 14%; width: 2px; margin-left: -1px; }
+.stick::after { top: 50%; left: 14%; right: 14%; height: 2px; margin-top: -1px; }
+.stick b { position: relative; z-index: 1; width: 66px; height: 66px; border-radius: 50%; background: #fff radial-gradient(#B7A4EC 0 10px, transparent 11px); box-shadow: 0 4px 14px #3B325655; transition: transform .15s; }
+.stick.held b { transition: none; }
+.round { width: 260px; width: min(80cqh, 70cqw, 320px); aspect-ratio: 1; border-radius: 50%; }
+.tall { width: 100px; height: 240px; height: min(84cqh, 300px); border-radius: 50px; }
+.wide { width: 220px; width: min(40cqw, 300px); height: 100px; border-radius: 50px; }
+@media (orientation: portrait) {
+  .ctl { flex-direction: column; }
+  .tall { height: min(42cqh, 280px); }
+  .wide { width: min(64cqw, 300px); }
+}
+
+/*== xbtn ==*/
+/*@ th=ปุ่มพิเศษ: ตำแหน่ง left/top เป็น % ของพื้นที่ปุ่ม ชื่ออยู่ใต้ปุ่ม|en=Extra buttons: left/top are % of the control area, the label sits under the button|lo=ປຸ່ມພິເສດ: ຕຳແໜ່ງ left/top ເປັນ % ຂອງພື້ນທີ່ປຸ່ມ ຊື່ຢູ່ລຸ່ມປຸ່ມ */
+.xbtn { position: absolute; z-index: 2; translate: -50% -50%; }
+.xbtn span { position: absolute; top: 100%; left: 50%; translate: -50% 6px; font-size: 13px; font-weight: 600; color: #3B3256; white-space: nowrap; }
+
+/*== term ==*/
+/*@ th=หน้าต่างข้อความ: ↑ ส่งไป ↓ หุ่นตอบมา|en=Terminal: ↑ sent ↓ from the robot|lo=ໜ້າຕ່າງຂໍ້ຄວາມ: ↑ ສົ່ງໄປ ↓ ຫຸ່ນຍົນຕອບມາ */
+#term { flex: 0 0 34%; min-width: 0; min-height: 0; display: flex; flex-direction: column; margin: 0 10px 10px; border-radius: 16px; background: #fff; box-shadow: 0 6px 18px #3B32561f; }
+#term:only-child { flex: 1; }
+@media (orientation: landscape) { #pad + #term { margin-left: 0; } }
+#log { flex: 1; overflow-y: auto; padding: 10px 14px; font: 14px/1.5 ui-monospace, monospace; overflow-wrap: anywhere; }
+#log .out { color: #7A5CD6; }
+#log .in { color: #22875a; }
+#log .info { color: #c0483c; }
+#log .out::before { content: "↑ "; }
+#log .in::before { content: "↓ "; }
+#sendForm { display: flex; gap: 8px; padding: 8px; border-top: 1px solid #eee9f8; }
+#msg { flex: 1; min-width: 0; padding: 9px 14px; border: 1px solid #d9d1ef; border-radius: 99px; font: 16px system-ui, sans-serif; }
+#sendForm button { padding: 9px 18px; border-radius: 99px; background: #3B3256; color: #fff; font-weight: 600; }

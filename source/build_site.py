@@ -23,6 +23,7 @@ def check_lesson(lang, th, t):
         if not t.get(k): p(f'missing {k}'); ok = False
     if len(t.get('goals', [])) != len(th['goals']): p('goals count'); ok = False
     if len(t.get('arduino', [])) != len(th.get('arduino', [])): p('arduino count'); ok = False
+    if bool(t.get('arduinoTitle')) != bool(th.get('arduinoTitle')): p('arduinoTitle presence'); ok = False
     exs = t.get('examples', [])
     if len(exs) != len(th['examples']): p('examples count'); ok = False
     else:
@@ -42,7 +43,7 @@ def check_lesson(lang, th, t):
             if len(a['choices']) != len(b.get('choices', [])): p(f'quiz {i+1} choices'); ok = False
             if not b.get('q') or not b.get('why'): p(f'quiz {i+1} text'); ok = False
     if not ok: return None
-    return dict(title=t['title'], intro=t['intro'], goals=t['goals'], arduino=t.get('arduino', []),
+    return dict(title=t['title'], intro=t['intro'], goals=t['goals'], arduino=t.get('arduino', []), arduinoTitle=t.get('arduinoTitle', ''),
                 examples=[dict(title=e['title'], desc=e.get('desc', ''), notes=e.get('notes', [])) for e in exs],
                 tries=[dict(task=x['task'], answer=x.get('answer', '')) for x in trs],
                 quiz=[dict(q=x['q'], choices=x['choices'], why=x['why']) for x in qz])

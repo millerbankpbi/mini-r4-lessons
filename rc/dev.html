@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" href="data:,">
+<title>Controller dev page</title>
+<script src="rc.js"></script>
+</head>
+<body style="font: 16px system-ui, sans-serif; padding: 16px">
+<script>
+(function () {
+  const q = new URLSearchParams(location.search), lang = q.get('lang') || 'th';
+  let cfg = q.get('c') ? JSON.parse(q.get('c')) : RC.preset(q.get('p'));
+  if (q.get('saved')) { try { cfg = JSON.parse(localStorage.getItem('mbr4-rc')); } catch (e) {} }  // the builder's current config
+  if (cfg) {
+    const html = RC.exportHTML(cfg, lang);
+    addEventListener('load', () => { document.open(); document.write(html); document.close(); });
+    return;
+  }
+  const rows = Object.keys(RC.presets).map((k) => '<li>' + ['th', 'en', 'lo']
+    .map((l) => '<a href="?p=' + k + '&lang=' + l + '">' + k + ' ' + l + '</a>').join(' · ') + '</li>');
+  document.body.innerHTML = '<h1>Controller dev page</h1><p>?p=&lt;preset&gt;&amp;lang=th|en|lo or ?c=&lt;config JSON&gt; or ?saved=1</p><ul>' + rows.join('') + '</ul>';
+})();
+</script>
+</body>
+</html>

@@ -71,6 +71,10 @@ p{margin:8px 0}
 .lead{font-size:17.5px;max-width:70ch}
 .goals{background:var(--paper);border:1px solid var(--line);border-left:5px solid var(--teal);border-radius:10px;padding:10px 18px;margin:16px 0}
 .goals ul{margin:4px 0;padding-left:20px}
+.rcrow{display:flex;flex-wrap:wrap;align-items:center;gap:6px 14px;margin:4px 0 8px}
+.rcbtn{display:inline-flex;align-items:center;gap:8px;background:var(--u,#7A5CD6);color:#fff;text-decoration:none;font-weight:600;border-radius:10px;padding:8px 16px;box-shadow:0 6px 16px -10px var(--u,#7A5CD6)}
+.rcbtn:hover{filter:brightness(1.08)}
+.rcbtn svg{flex:none}
 
 /* ---------- บล็อก ---------- */
 .canvas{background-color:#F9FBFB;background-image:radial-gradient(#D4DFE0 1px,transparent 1.2px);background-size:18px 18px;padding:18px;overflow:auto}
@@ -117,6 +121,8 @@ pre.code .ln.hl::before{color:var(--amber)}
 .bridge-cap h3{margin:0}
 .hint{color:var(--muted);font-size:14px}
 @media (max-width:760px){.bridge{grid-template-columns:1fr}.bridge .canvas{border-right:0;border-bottom:1px solid #C9D6D8}}
+.bridge.code-only{grid-template-columns:minmax(0,1fr)}
+.canvas .stack>.blk.top-next{margin-top:18px}
 
 .notes{list-style:none;padding:0;margin:8px 0 0;display:grid;gap:6px}
 .notes li{display:grid;grid-template-columns:minmax(0,auto) 1fr;gap:4px 12px;align-items:baseline;background:var(--paper);border:1px solid var(--line);border-radius:10px;padding:8px 12px}
@@ -136,6 +142,8 @@ pre.code .ln.hl::before{color:var(--amber)}
 .params b{font-weight:600}
 .warn{background:#FFF4D6;border:1px solid #F0D58A;border-radius:8px;padding:6px 10px;font-size:14.5px;margin-top:8px}
 .warn::before{content:"ข้อควรรู้ · ";font-weight:700;color:#7A5600}
+html:lang(en) .warn::before{content:"Note · "}
+html:lang(lo) .warn::before{content:"ຂໍ້ຄວນຮູ້ · "}
 details.vars{margin-top:8px;font-size:14px}
 details.vars summary{cursor:pointer;color:var(--teal-d);font-weight:600}
 table.vt{border-collapse:collapse;margin-top:6px;width:100%;font-size:13px}
@@ -205,6 +213,9 @@ let D = null;
 const INLINE = document.getElementById('data').textContent.trim();
 // หน้าไหนฝังไฟล์ในตัวเฟรม (เช่นตัวแสดงผลของ claude.ai) จะดาวน์โหลดไฟล์ไม่ได้ จึงซ่อนปุ่ม .ino
 const FRAMED = (() => { try { return window.self !== window.top; } catch (e) { return true; } })();
+// หน้าจอยบังคับหุ่น: เว็บจริงอยู่ที่ rc/ ข้างหน้านี้ ไฟล์ offline ไม่มีโฟลเดอร์ rc จึงลิงก์ไปเว็บจริง (Bluetooth จากเว็บใช้ได้เฉพาะ https)
+const RC_BASE = INLINE.startsWith('[') ? 'https://millerbankpbi.github.io/mini-r4-lessons/rc/' : 'rc/';
+const rcHref = preset => RC_BASE + '?' + (preset ? 'p=' + encodeURIComponent(preset) + '&' : '') + 'lang=' + SITE;
 function fromRecords(recs) {
   const d = { units: [], lessons: [], blocks: {} };
   for (const r of recs) { if (r.kind === 'units') d.units = r.units; else if (r.kind === 'lesson') d.lessons.push(r.lesson); else if (r.kind === 'block') d.blocks[r.type] = r.block; }
@@ -222,13 +233,16 @@ const I18N = {
   th: {
     brand: 'Mini R4: จากบล็อกสู่โค้ด', brandSub: 'MATRIXblock คู่ Arduino', title: 'Mini R4: จากบล็อกสู่โค้ด — เรียน MATRIXblock คู่ Arduino',
     openNav: 'เปิดเมนู', navBtn: '☰ บทเรียน', navLabel: 'บทเรียน', langGroup: 'ภาษาของเว็บ',
-    home: 'หน้าแรก', start: 'เริ่มต้น: บล็อก → Arduino IDE', ref: 'ตารางบล็อก ↔ โค้ด',
+    home: 'หน้าแรก', start: 'เริ่มต้น: บล็อก → Arduino IDE', ref: 'ตารางบล็อก ↔ โค้ด', rcBuilder: 'หน้าสร้างจอย',
+    openRc: 'เปิดจอยของบทนี้', rcHint: 'เปิดในมือถือ · Android ใช้ Chrome · iPhone ใช้แอป Bluefy',
+    rcHintMqtt: 'เปิดในมือถือ · ต่อผ่านอินเทอร์เน็ต ใช้เบราว์เซอร์ไหนก็ได้ (iPhone ใช้ Safari ได้)',
     unit: n => 'หน่วยที่ ' + n, soon: 'กำลังทำ', passed: 'ผ่านแบบทดสอบแล้ว', blockLang: 'ป้ายบล็อก', loNote: '',
     copy: 'คัดลอก', copied: 'คัดลอกแล้ว', selected: 'เลือกโค้ดแล้ว กด Ctrl+C', codeAria: 'โค้ด Arduino',
     menuOpts: 'ตัวเลือกในเมนูของบล็อก → โค้ด', goals: 'เรียนจบบทนี้แล้ว',
     secBlocks: 'บล็อกในบทนี้', secBlocksSub: 'แต่ละบล็อกกลายเป็นโค้ดแบบนี้ (ได้จากตัวสร้างโค้ดของโปรแกรม MATRIXblock เอง)',
     secEx: 'ตัวอย่าง', secExSub: 'ชี้ (หรือแตะ) ที่บล็อก เพื่อดูว่าเป็นโค้ดบรรทัดไหน ชี้ที่โค้ดก็ได้เช่นกัน', hlLine: 'ไฮไลต์บรรทัดนี้',
     secIde: 'เขียนเองใน Arduino IDE', secTry: 'ลองทำ', secTrySub: 'ลองต่อบล็อกใน MATRIXblock ก่อน แล้วค่อยเปิดเฉลยเทียบโค้ด',
+    secExSubCode: 'ตัวอย่างเป็นโค้ด C++ ล้วน (ไม่มีบล็อก) กดปุ่มโค้ดใต้ตัวอย่างเพื่อไฮไลต์บรรทัดที่อธิบาย', secTrySubCode: 'ลองแก้โค้ดใน Arduino IDE ก่อน แล้วค่อยเปิดเฉลยเทียบ',
     showAns: 'ดูเฉลย', hideAns: 'ซ่อนเฉลย', secQuiz: 'เช็กความเข้าใจ', doneBanner: 'ผ่านบทนี้แล้ว ✓ ติ๊กถูกในเมนูด้านข้างแล้ว',
     right: 'ถูกต้อง', wrong: 'ยังไม่ใช่', prev: '← บทก่อน', next: 'บทถัดไป →',
     heroCrumb: 'สื่อการสอน MATRIX Mini R4 · MATRIXblock + Arduino C++', heroH1: 'บล็อกหนึ่งตัว คือโค้ดหนึ่งท่อน',
@@ -251,13 +265,16 @@ const I18N = {
   en: {
     brand: 'Mini R4: From Blocks to Code', brandSub: 'MATRIXblock with Arduino', title: 'Mini R4: From Blocks to Code — learn MATRIXblock with Arduino',
     openNav: 'Open menu', navBtn: '☰ Lessons', navLabel: 'Lessons', langGroup: 'Site language',
-    home: 'Home', start: 'Getting started: blocks → Arduino IDE', ref: 'Block ↔ code table',
+    home: 'Home', start: 'Getting started: blocks → Arduino IDE', ref: 'Block ↔ code table', rcBuilder: 'Controller builder',
+    openRc: 'Open this lesson’s controller', rcHint: 'Open it on your phone · Android: Chrome · iPhone: the Bluefy app',
+    rcHintMqtt: 'Open it on your phone · it connects over the internet, so any browser works (Safari on iPhone too)',
     unit: n => 'Unit ' + n, soon: 'coming soon', passed: 'Quiz passed', blockLang: 'Block labels', loNote: '',
     copy: 'Copy', copied: 'Copied', selected: 'Code selected, press Ctrl+C', codeAria: 'Arduino code',
     menuOpts: 'Block menu options → code', goals: 'After this lesson you can',
     secBlocks: 'Blocks in this lesson', secBlocksSub: 'This is the code each block becomes (taken from MATRIXblock’s own code generator)',
     secEx: 'Examples', secExSub: 'Point at (or tap) a block to see which lines of code it makes. Pointing at the code works too.', hlLine: 'Highlight this line',
     secIde: 'Writing it yourself in Arduino IDE', secTry: 'Try it', secTrySub: 'Build it in MATRIXblock first, then open the answer and compare the code',
+    secExSubCode: 'The example is plain C++ (no blocks). Tap a code button under the example to highlight the line it explains.', secTrySubCode: 'Change the code in Arduino IDE first, then open the answer and compare',
     showAns: 'Show answer', hideAns: 'Hide answer', secQuiz: 'Check your understanding', doneBanner: 'Lesson passed ✓ It is ticked in the side menu.',
     right: 'Correct', wrong: 'Not yet', prev: '← Previous', next: 'Next →',
     heroCrumb: 'MATRIX Mini R4 teaching materials · MATRIXblock + Arduino C++', heroH1: 'Every block is a piece of code',
@@ -280,7 +297,9 @@ const I18N = {
   lo: {
     brand: 'Mini R4: ຈາກບລັອກສູ່ໂຄ້ດ', brandSub: 'MATRIXblock ຄູ່ກັບ Arduino', title: 'Mini R4: ຈາກບລັອກສູ່ໂຄ້ດ — ຮຽນ MATRIXblock ຄູ່ກັບ Arduino',
     openNav: 'ເປີດເມນູ', navBtn: '☰ ບົດຮຽນ', navLabel: 'ບົດຮຽນ', langGroup: 'ພາສາຂອງເວັບ',
-    home: 'ໜ້າຫຼັກ', start: 'ເລີ່ມຕົ້ນ: ບລັອກ → Arduino IDE', ref: 'ຕາຕະລາງບລັອກ ↔ ໂຄ້ດ',
+    home: 'ໜ້າຫຼັກ', start: 'ເລີ່ມຕົ້ນ: ບລັອກ → Arduino IDE', ref: 'ຕາຕະລາງບລັອກ ↔ ໂຄ້ດ', rcBuilder: 'ໜ້າສ້າງຈອຍ',
+    openRc: 'ເປີດຈອຍຂອງບົດນີ້', rcHint: 'ເປີດໃນມືຖື · Android ໃຊ້ Chrome · iPhone ໃຊ້ແອັບ Bluefy',
+    rcHintMqtt: 'ເປີດໃນມືຖື · ເຊື່ອມຕໍ່ຜ່ານອິນເຕີເນັດ ໃຊ້ບຣາວເຊີໃດກໍໄດ້ (iPhone ໃຊ້ Safari ໄດ້)',
     unit: n => 'ໜ່ວຍທີ ' + n, soon: 'ກຳລັງສ້າງ', passed: 'ຜ່ານແບບທົດສອບແລ້ວ', blockLang: 'ປ້າຍບລັອກ',
     loNote: 'ໂປຣແກຣມ MATRIXblock ບໍ່ມີພາສາລາວ ປ້າຍບລັອກຈຶ່ງສະແດງເປັນພາສາອັງກິດ ຫຼື ໄທ',
     copy: 'ສຳເນົາ', copied: 'ສຳເນົາແລ້ວ', selected: 'ເລືອກໂຄ້ດແລ້ວ ກົດ Ctrl+C', codeAria: 'ໂຄ້ດ Arduino',
@@ -288,6 +307,7 @@ const I18N = {
     secBlocks: 'ບລັອກໃນບົດນີ້', secBlocksSub: 'ແຕ່ລະບລັອກກາຍເປັນໂຄ້ດແບບນີ້ (ໄດ້ຈາກຕົວສ້າງໂຄ້ດຂອງໂປຣແກຣມ MATRIXblock ເອງ)',
     secEx: 'ຕົວຢ່າງ', secExSub: 'ຊີ້ (ຫຼື ແຕະ) ທີ່ບລັອກ ເພື່ອເບິ່ງວ່າເປັນໂຄ້ດແຖວໃດ ຊີ້ທີ່ໂຄ້ດກໍໄດ້ຄືກັນ', hlLine: 'ໄຮໄລທ໌ແຖວນີ້',
     secIde: 'ຂຽນເອງໃນ Arduino IDE', secTry: 'ລອງເຮັດ', secTrySub: 'ລອງຕໍ່ບລັອກໃນ MATRIXblock ກ່ອນ ແລ້ວຈຶ່ງເປີດຄຳຕອບທຽບໂຄ້ດ',
+    secExSubCode: 'ຕົວຢ່າງເປັນໂຄ້ດ C++ ລ້ວນ (ບໍ່ມີບລັອກ) ກົດປຸ່ມໂຄ້ດໃຕ້ຕົວຢ່າງເພື່ອໄຮໄລທ໌ແຖວທີ່ອະທິບາຍ', secTrySubCode: 'ລອງແກ້ໂຄ້ດໃນ Arduino IDE ກ່ອນ ແລ້ວຈຶ່ງເປີດຄຳຕອບທຽບ',
     showAns: 'ເບິ່ງຄຳຕອບ', hideAns: 'ເຊື່ອງຄຳຕອບ', secQuiz: 'ກວດຄວາມເຂົ້າໃຈ', doneBanner: 'ຜ່ານບົດນີ້ແລ້ວ ✓ ໝາຍຖືກໄວ້ໃນເມນູຂ້າງແລ້ວ',
     right: 'ຖືກຕ້ອງ', wrong: 'ຍັງບໍ່ແມ່ນ', prev: '← ບົດກ່ອນ', next: 'ບົດຕໍ່ໄປ →',
     heroCrumb: 'ສື່ການສອນ MATRIX Mini R4 · MATRIXblock + Arduino C++', heroH1: 'ບລັອກໜຶ່ງອັນ ຄືໂຄ້ດໜຶ່ງທ່ອນ',
@@ -325,7 +345,7 @@ function localize(lang) {
     const t = l.tr && l.tr[lang];
     if (!t) return l;
     return Object.assign({}, l, {
-      title: t.title, intro: t.intro, goals: t.goals, arduino: t.arduino,
+      title: t.title, intro: t.intro, goals: t.goals, arduino: t.arduino, arduinoTitle: t.arduinoTitle,
       examples: l.examples.map((e, i) => Object.assign({}, e, { title: t.examples[i].title, desc: t.examples[i].desc, notes: (e.notes || []).map((n, j) => [n[0], t.examples[i].notes[j]]) })),
       tries: (l.tries || []).map((x, i) => Object.assign({}, x, { task: t.tries[i].task, answer: t.tries[i].answer })),
       quiz: (l.quiz || []).map((q, i) => Object.assign({}, q, { q: t.quiz[i].q, choices: t.quiz[i].choices, why: t.quiz[i].why }))
@@ -348,7 +368,7 @@ function setSite(lang) {
 }
 let LANG = store.get('mbr4-lang', 'en');
 let DONE = store.get('mbr4-done', {});
-const CAT = { core: ['R4 Core', '#00878F'], move: ['Movement', '#fb59ce'], looks: ['Looks', '#9966FF'], serial: ['Serial', '#ed9979'], sensing: ['Sensing', '#5cb1d6'], control: ['Control', '#FFAB19'], ops: ['Operators', '#40BF4A'], vars: ['Variables', '#FF8C1A'] };
+const CAT = { core: ['R4 Core', '#00878F'], move: ['Movement', '#fb59ce'], looks: ['Looks', '#9966FF'], serial: ['Serial', '#ed9979'], sensing: ['Sensing', '#5cb1d6'], control: ['Control', '#FFAB19'], ops: ['Operators', '#40BF4A'], vars: ['Variables', '#FF8C1A'], iot: ['IoT', '#00B8D4'] };
 
 // ---------------- วาดบล็อก ----------------
 const ICON = t => /ddc_/.test(t) ? '◎' : /Buzzer/.test(t) ? '♪' : /OLED/.test(t) ? '▭' : /RGB/.test(t) ? '✦' : /_RC/.test(t) ? '⟲' : /_M|ENC/.test(t) ? '⚙' : /motion/.test(t) ? '✥' : /color/i.test(t) ? '◍' : /aser/.test(t) ? '⦿' : /Serial/.test(t) ? '⇄' : /Grayscale|Pot|AIget|DIget|DOset/.test(t) ? '⌁' : /control_repeat|forever/.test(t) ? '↻' : '▣';
@@ -409,7 +429,7 @@ function renderBlock(node) {
 }
 function renderStacks(stacks) {
   const wrap = document.createElement('div'); wrap.className = 'stack';
-  for (const s of stacks) for (const n of s) wrap.appendChild(renderBlock(n));
+  stacks.forEach((s, i) => s.forEach((n, j) => { const el = renderBlock(n); if (i && !j) el.classList.add('top-next'); wrap.appendChild(el); }));
   return wrap;
 }
 
@@ -438,16 +458,16 @@ function findNode(stacks, id) {
 }
 function bridge(ex, opts = {}) {
   const lines = ex.code.replace(/\n+$/, '').split('\n');
-  const box = document.createElement('div'); box.className = 'bridge';
+  const box = document.createElement('div'); box.className = 'bridge' + (ex.codeOnly ? ' code-only' : '');
   const cv = document.createElement('div'); cv.className = 'canvas';
-  cv.appendChild(renderStacks(ex[LANG] || ex.en));
+  if (!ex.codeOnly) cv.appendChild(renderStacks(ex[LANG] || ex.en));
   const cb = document.createElement('div'); cb.className = 'codebox';
   cb.innerHTML = '<div class="codebar"><span>' + esc(opts.file || 'sketch.ino') + '</span><span class="sp"></span><button data-act="copy">' + U('copy') + '</button>' + (FRAMED ? '' : '<button data-act="dl">.ino</button>') + '</div>';
   const pre = document.createElement('pre'); pre.className = 'code'; pre.tabIndex = 0;
   pre.setAttribute('aria-label', U('codeAria'));
   pre.innerHTML = lines.map((l, i) => '<span class="ln" data-n="' + (i + 1) + '">' + (hiLine(l) || ' ') + '</span>').join('');
   cb.appendChild(pre);
-  box.append(cv, cb);
+  if (ex.codeOnly) box.append(cb); else box.append(cv, cb);
   const lnEls = [...pre.querySelectorAll('.ln')];
   const stacks = ex.en;
   // ช่วงบรรทัดของแต่ละบล็อก (บล็อกค่าใช้บรรทัดของบล็อกแม่)
@@ -519,7 +539,7 @@ function renderSide(active) {
   const s = $('#side');
   let h = '<a class="brand" href="#home"><svg width="38" height="38" viewBox="0 0 64 64" aria-hidden="true"><rect x="4" y="12" width="28" height="20" rx="5" fill="#00878F"/><rect x="32" y="32" width="28" height="20" rx="5" fill="#10282C"/><path d="M32 22h7v20" stroke="#FFC857" stroke-width="5" fill="none"/></svg><span><b>' + U('brand') + '</b><span>' + U('brandSub') + '</span></span></a>';
   h += '<div class="sitelang" role="group" aria-label="' + U('langGroup') + '">' + SITES.map(([k, n]) => '<button lang="' + k + '" data-site="' + k + '" aria-pressed="' + (k === SITE) + '">' + n + '</button>').join('') + '</div>';
-  h += '<div class="nav-top"><a class="navi' + (active === 'home' ? ' on' : '') + '" href="#home">' + U('home') + '</a><a class="navi' + (active === 'start' ? ' on' : '') + '" href="#start">' + U('start') + '</a><a class="navi' + (active === 'ref' ? ' on' : '') + '" href="#ref">' + U('ref') + '</a></div>';
+  h += '<div class="nav-top"><a class="navi' + (active === 'home' ? ' on' : '') + '" href="#home">' + U('home') + '</a><a class="navi' + (active === 'start' ? ' on' : '') + '" href="#start">' + U('start') + '</a><a class="navi' + (active === 'ref' ? ' on' : '') + '" href="#ref">' + U('ref') + '</a><a class="navi" href="' + esc(rcHref('')) + '">' + U('rcBuilder') + '</a></div>';
   for (const u of D.units) {
     h += '<div class="unit-h" style="--u:' + u.color + '"><i></i>' + U('unit')(u.id) + ' ' + esc(u.title) + (u.soon ? '<small>' + U('soon') + '</small>' : '') + '</div>';
     for (const l of lessonsByUnit(u.id)) {
@@ -564,13 +584,25 @@ function lessonPage(les) {
   const head = document.createElement('div');
   head.innerHTML = '<div class="crumb"><a href="#home">' + U('home') + '</a> · ' + U('unit')(unit.id) + ' ' + esc(unit.title) + '</div><h1>' + les.title + '</h1>' +
     '<p class="lead">' + les.intro + '</p><div class="goals"><b>' + U('goals') + '</b><ul>' + les.goals.map(g => '<li>' + g + '</li>').join('') + '</ul></div>';
+  if (les.rc) {
+    const row = document.createElement('p'); row.className = 'rcrow'; row.style.setProperty('--u', unit.color);
+    const a = document.createElement('a'); a.className = 'rcbtn'; a.href = rcHref(les.rc);
+    a.innerHTML = '<svg width="22" height="16" viewBox="0 0 22 16" aria-hidden="true"><rect x="1" y="1" width="20" height="14" rx="7" fill="none" stroke="currentColor" stroke-width="2"/><path d="M6 5v6M3 8h6" stroke="currentColor" stroke-width="2"/><circle cx="15" cy="6" r="1.6" fill="currentColor"/><circle cx="17" cy="10" r="1.6" fill="currentColor"/></svg>';
+    a.append(U('openRc'));
+    const hint = document.createElement('span'); hint.className = 'hint'; hint.textContent = U(les.rcLink === 'mqtt' ? 'rcHintMqtt' : 'rcHint');
+    row.append(a, hint); head.appendChild(row);
+  }
   v.appendChild(head);
   const sec = (t, sub) => { const h = document.createElement('h2'); h.innerHTML = t; v.appendChild(h); if (sub) { const p = document.createElement('p'); p.className = 'hint'; p.innerHTML = sub; v.appendChild(p); } };
-  sec(U('secBlocks'), U('secBlocksSub'));
-  const bc = document.createElement('div'); bc.className = 'bcards';
-  les.blocks.forEach(t => bc.appendChild(blockCard(t)));
-  v.appendChild(bc);
-  sec(U('secEx'), U('secExSub'));
+  // บทที่ไม่มีบล็อกใหม่ (เช่น บทหน้าสร้างจอย) ไม่แสดงหัวข้อบล็อก
+  if (les.blocks.length) {
+    sec(U('secBlocks'), U('secBlocksSub'));
+    const bc = document.createElement('div'); bc.className = 'bcards';
+    les.blocks.forEach(t => bc.appendChild(blockCard(t)));
+    v.appendChild(bc);
+  }
+  const allCode = list => list.length > 0 && list.every(x => x.codeOnly);
+  sec(U('secEx'), allCode(les.examples) ? U('secExSubCode') : U('secExSub'));
   les.examples.forEach((ex, i) => {
     const cap = document.createElement('div'); cap.className = 'bridge-cap';
     cap.innerHTML = '<h3>' + (i + 1) + '. ' + esc(ex.title) + '</h3><span class="hint">' + (ex.desc || '') + '</span>';
@@ -591,13 +623,13 @@ function lessonPage(les) {
     }
   });
   if (les.arduino && les.arduino.length) {
-    sec(U('secIde'));
+    sec(les.arduinoTitle || U('secIde'));
     const t = document.createElement('div'); t.className = 'tips';
     t.innerHTML = '<ul>' + les.arduino.map(x => '<li>' + x + '</li>').join('') + '</ul>';
     v.appendChild(t);
   }
   if (les.tries && les.tries.length) {
-    sec(U('secTry'), U('secTrySub'));
+    sec(U('secTry'), allCode(les.tries) ? U('secTrySubCode') : U('secTrySub'));
     les.tries.forEach((tr, i) => {
       const box = document.createElement('div'); box.className = 'task';
       box.innerHTML = '<p><span class="num">' + (i + 1) + '</span>' + tr.task + '</p>';
@@ -685,7 +717,7 @@ function refPage() {
   v.innerHTML = '<div class="crumb"><a href="#home">' + U('home') + '</a></div><h1>' + U('ref') + '</h1><p class="lead">' + U('refLead') + '</p>' +
     '<input class="search" id="q" type="search" placeholder="' + U('search') + '" aria-label="' + U('search') + '">';
   const body = document.createElement('div'); v.appendChild(body);
-  const order = ['core', 'move', 'looks', 'control', 'ops', 'vars', 'serial', 'sensing'];
+  const order = ['core', 'move', 'looks', 'control', 'ops', 'vars', 'iot', 'serial', 'sensing'];
   const draw = q => {
     body.innerHTML = '';
     q = (q || '').toLowerCase();

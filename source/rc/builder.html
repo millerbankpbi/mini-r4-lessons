@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" href="data:,">
+<title>MATRIX Mini R4 · Controller builder</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Thai:wght@400;500;600;700&family=Noto+Sans+Lao:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root { --bg: #F2F5F5; --paper: #fff; --ink: #10282C; --muted: #56696D; --line: #D9E2E3; --teal: #00878F; --teal-d: #006A71; --red: #EE6B5E; }
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--ink); font: 16px/1.5 "IBM Plex Sans Thai", "Noto Sans Lao", system-ui, sans-serif; }
+a { color: var(--teal-d); }
+header.top { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; padding: 12px 16px; background: var(--paper); border-bottom: 1px solid var(--line); }
+header.top h1 { flex: 1 1 auto; margin: 0; font-size: 20px; line-height: 1.3; }
+.lang { display: flex; gap: 6px; }
+.lang a { padding: 3px 11px; border: 1px solid var(--line); border-radius: 99px; text-decoration: none; color: var(--ink); font-size: 14px; }
+.lang a.on { background: var(--ink); border-color: var(--ink); color: #fff; }
+.wrap { display: grid; grid-template-columns: minmax(0, 1fr); gap: 16px; max-width: 1180px; margin: 0 auto; padding: 16px; }
+@media (min-width: 900px) { .wrap { grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); align-items: start; } .col-preview { position: sticky; top: 12px; } }
+section.card { background: var(--paper); border: 1px solid var(--line); border-radius: 14px; padding: 14px 16px; margin-bottom: 16px; }
+.col-preview section.card, .col-edit section.card:last-child { margin-bottom: 0; }
+h2 { margin: 0 0 10px; font-size: 17px; }
+label { display: block; font-size: 14px; color: var(--muted); margin-bottom: 2px; }
+.field { margin-bottom: 10px; min-width: 0; }
+input[type=text], input[type=number], select, textarea { width: 100%; min-height: 40px; padding: 6px 10px; border: 1px solid var(--line); border-radius: 8px; background: #fff; color: var(--ink); font: inherit; }
+textarea { font: 13px/1.4 ui-monospace, monospace; min-height: 90px; }
+input:focus, select:focus, textarea:focus, button:focus-visible { outline: 2px solid var(--teal); outline-offset: 1px; }
+.row { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 12px; }
+.row.one { grid-template-columns: minmax(0, 1fr); }
+.hint { margin: 4px 0 0; font-size: 13px; color: var(--muted); }
+.check { display: flex; align-items: center; gap: 8px; font-size: 16px; color: var(--ink); }
+.check input { width: 20px; height: 20px; }
+button.btn { min-height: 42px; padding: 8px 16px; border: 1px solid var(--teal); border-radius: 10px; background: var(--paper); color: var(--teal-d); font: inherit; font-weight: 600; cursor: pointer; }
+button.btn.main { background: var(--teal); color: #fff; }
+button.btn.del { border-color: var(--red); color: #b3392d; min-height: 36px; padding: 4px 12px; }
+.actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+.stage { position: relative; width: 100%; overflow: hidden; border-radius: 12px; border: 1px solid var(--line); background: #ECE8F7; }
+#preview { position: absolute; left: 0; top: 0; width: 844px; height: 390px; border: 0; transform-origin: 0 0; }
+.bcard { border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px 4px; margin-bottom: 10px; background: #FAFCFC; }
+.bcard.drag { border-color: var(--teal); box-shadow: 0 0 0 2px #00878F33; }
+.bhead { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; font-weight: 600; }
+#copybox { margin-top: 10px; }
+.msg { min-height: 1.4em; margin: 8px 0 0; font-size: 14px; color: var(--teal-d); }
+.msg.err { color: #b3392d; }
+[hidden] { display: none !important; }
+</style>
+</head>
+<body>
+<header class="top">
+  <a id="home" href="../#home" data-t="back"></a>
+  <h1 data-t="title"></h1>
+  <nav class="lang" aria-label="language"></nav>
+</header>
+<div class="wrap">
+  <div class="col-preview">
+    <section class="card">
+      <h2 data-t="previewH"></h2>
+      <div class="stage" id="stage"><iframe id="preview" title="preview"></iframe></div>
+      <p class="hint" data-t="dragHint"></p>
+      <div class="actions">
+        <button class="btn main" id="testrobot" data-t="testRobot"></button>
+        <button class="btn" id="copy" data-t="copy"></button>
+        <button class="btn" id="download" data-t="download"></button>
+      </div>
+      <p class="hint" data-t="testRobotHint"></p>
+      <p class="msg" id="copymsg" role="status"></p>
+      <textarea id="copybox" readonly hidden spellcheck="false"></textarea>
+    </section>
+  </div>
+  <div class="col-edit">
+    <section class="card">
+      <h2 data-t="setupH"></h2>
+      <div class="row one">
+        <div class="field"><label for="preset" data-t="preset"></label><select id="preset"></select></div>
+        <div class="field"><label for="mode" data-t="mode"></label><select id="mode"></select></div>
+      </div>
+    </section>
+    <section class="card">
+      <h2 data-t="settingsH"></h2>
+      <div class="row">
+        <div class="field"><label for="name" data-t="name"></label><input type="text" id="name" maxlength="24" autocomplete="off" autocapitalize="characters" spellcheck="false"></div>
+        <div class="field"><label for="link" data-t="link"></label><select id="link"><option value="ble"></option><option value="mqtt"></option></select></div>
+      </div>
+      <p class="hint" data-t="nameHint" style="margin: -4px 0 10px"></p>
+      <div class="field" id="urlfield"><label for="url" data-t="broker"></label><input type="text" id="url" autocomplete="off" spellcheck="false"></div>
+      <div class="field" id="speedfield"><label for="speed"><span data-t="speed"></span>: <b id="speedval"></b></label><input type="range" id="speed" min="10" max="100" step="5" style="width:100%"></div>
+      <label class="check"><input type="checkbox" id="terminal"><span data-t="terminal"></span></label>
+    </section>
+    <section class="card">
+      <h2 data-t="buttonsH"></h2>
+      <div id="buttons"></div>
+      <p class="hint" id="nobtn" data-t="none"></p>
+      <button class="btn" id="add" data-t="add"></button>
+    </section>
+    <section class="card">
+      <h2 data-t="fileH"></h2>
+      <p class="hint" data-t="fileHint" style="margin-top:0"></p>
+      <textarea id="paste" spellcheck="false" data-ph="paste"></textarea>
+      <div class="actions"><button class="btn" id="testfile" data-t="openFile"></button></div>
+      <p class="msg err" id="pastemsg" role="status"></p>
+    </section>
+  </div>
+</div>
+<script src="rc.js"></script>
+<script src="i18n.js"></script>
+<script>
+(function () {
+  'use strict';
+  const $ = (s, r) => (r || document).querySelector(s);
+  const KEY = 'mbr4-rc', LANGS = ['th', 'en', 'lo'], ANGLES = [0, 45, 90, 135, 180, 225, 270, 315], ARROWS = '↑↗→↘↓↙←↖';
+  const store = {
+    get(k) { try { return localStorage.getItem(k); } catch (e) { return null; } },
+    set(k, v) { try { localStorage.setItem(k, v); } catch (e) {} },
+  };
+
+  // language: ?lang= > localStorage mbr4-site > th
+  const q = new URLSearchParams(location.search);
+  const lang = [q.get('lang'), store.get('mbr4-site')].find((l) => LANGS.includes(l)) || 'th';
+  store.set('mbr4-site', lang);
+  const T = RCI18N[lang];
+  document.documentElement.lang = lang;
+  document.title = T.title + ' · MATRIX Mini R4';
+  document.querySelectorAll('[data-t]').forEach((e) => { e.textContent = T[e.dataset.t]; });
+  document.querySelectorAll('[data-ph]').forEach((e) => { e.placeholder = T[e.dataset.ph]; });
+  $('#home').href = '../?lang=' + lang + '#home';
+  $('.lang').innerHTML = LANGS.map((l) => `<a href="?lang=${l}"${l === lang ? ' class="on" aria-current="true"' : ''}>${l.toUpperCase()}</a>`).join('');
+  $('#preset').innerHTML = Object.keys(RC.presets).map((k) => `<option value="${k}">${T.presets[k]}</option>`).join('');
+  $('#mode').innerHTML = Object.keys(T.modes).map((k) => `<option value="${k}">${T.modes[k]}</option>`).join('');
+  $('#link').options[0].textContent = T.ble; $('#link').options[1].textContent = T.mqtt;
+
+  // state: a config as RC.exportHTML takes it, button labels already plain text in the chosen language
+  const plain = (c) => {
+    c.buttons = (c.buttons || []).map((b) => Object.assign({}, b, { label: b.label && typeof b.label === 'object' ? (b.label[lang] || b.label.en || '') : (b.label || '') }));
+    return c;
+  };
+  // a saved config is only trusted when every field has the right type (older or damaged saves are dropped)
+  function validConfig(c) {
+    const num = (v) => typeof v === 'number' && Number.isFinite(v), str = (v) => typeof v === 'string';
+    return !!c && typeof c === 'object' && !Array.isArray(c) && Object.keys(T.modes).includes(c.mode) && str(c.name)
+      && (c.link === 'ble' || c.link === 'mqtt') && num(c.speed) && Array.isArray(c.buttons)
+      && c.buttons.every((b) => b && typeof b === 'object' && !Array.isArray(b) && str(b.label) && str(b.press) && str(b.release) && num(b.x) && num(b.y) && num(b.angle));
+  }
+  let cfg, presetKey = q.get('p');
+  if (presetKey && RC.preset(presetKey)) cfg = plain(RC.preset(presetKey));
+  else {
+    presetKey = '';
+    try { cfg = JSON.parse(store.get(KEY)); } catch (e) { cfg = null; }
+    if (!validConfig(cfg)) { presetKey = 'stick2arm'; cfg = plain(RC.preset('stick2arm')); }
+    else cfg = plain(cfg);
+  }
+  $('#preset').value = presetKey || 'stick2arm';
+  const save = () => store.set(KEY, JSON.stringify(cfg));
+  const html = () => RC.exportHTML(cfg, lang);
+
+  // preview: same-origin iframe, drawn at 844x390 and scaled to fit
+  const frame = $('#preview'), stage = $('#stage');
+  function fit() {
+    const s = stage.clientWidth / 844;
+    frame.style.transform = 'scale(' + s + ')';
+    stage.style.height = Math.round(390 * s) + 'px';
+  }
+  addEventListener('resize', fit);
+  let queued = false;
+  function render() {
+    save();
+    if (queued) return;
+    queued = true;
+    requestAnimationFrame(() => { queued = false; frame.srcdoc = html(); });
+  }
+  frame.addEventListener('load', () => {
+    const d = frame.contentDocument;
+    if (!d || !d.body) return;
+    const connect = d.querySelector('#connect');
+    if (connect) connect.disabled = true;
+    d.addEventListener('pointerdown', startDrag, true);
+    d.addEventListener('contextmenu', (e) => e.preventDefault());
+  });
+
+  // drag an extra button: edit mode, the button never sends anything
+  function startDrag(e) {
+    const el = e.target.closest && e.target.closest('.xbtn');
+    if (!el) return;
+    e.preventDefault(); e.stopPropagation();
+    const d = frame.contentDocument, pad = d.querySelector('#pad'), i = [...d.querySelectorAll('.xbtn')].indexOf(el);
+    const b = cfg.buttons[i], box = el.getBoundingClientRect(), pr = pad.getBoundingClientRect();
+    const dx = e.clientX - (box.left + box.width / 2), dy = e.clientY - (box.top + box.height / 2);
+    const cardEl = $('#buttons').children[i];
+    if (cardEl) cardEl.classList.add('drag');
+    const clamp = (v) => Math.round(Math.min(100, Math.max(0, v)) * 10) / 10;
+    const move = (m) => {
+      b.x = clamp((m.clientX - dx - pr.left) / pr.width * 100);
+      b.y = clamp((m.clientY - dy - pr.top) / pr.height * 100);
+      el.style.left = b.x + '%'; el.style.top = b.y + '%';
+      if (cardEl) { $('.b-x', cardEl).value = b.x; $('.b-y', cardEl).value = b.y; }
+      save();
+    };
+    const up = () => {
+      d.removeEventListener('pointermove', move, true); d.removeEventListener('pointerup', up, true);
+      d.removeEventListener('pointercancel', up, true);
+      if (cardEl) cardEl.classList.remove('drag');
+      frame.srcdoc = html();
+    };
+    d.addEventListener('pointermove', move, true); d.addEventListener('pointerup', up, true); d.addEventListener('pointercancel', up, true);
+  }
+
+  // editor: settings
+  function showSettings() {
+    $('#mode').value = cfg.mode; $('#name').value = cfg.name; $('#link').value = cfg.link;
+    $('#url').value = (cfg.mqtt && cfg.mqtt.url) || RC.preset('hello').mqtt.url;
+    $('#speed').value = cfg.speed; $('#speedval').textContent = cfg.speed;
+    $('#terminal').checked = !!cfg.terminal;
+    $('#urlfield').hidden = cfg.link !== 'mqtt';
+    $('[data-t="testRobotHint"]').textContent = cfg.link === 'mqtt' ? T.testRobotHintMqtt : T.testRobotHint;
+    $('#speedfield').hidden = !/^stick/.test(cfg.mode);
+  }
+  const bind = (id, fn, ev) => $(id).addEventListener(ev || 'input', () => { fn($(id)); showSettings(); render(); });
+  bind('#mode', (e) => { cfg.mode = e.value; }, 'change');
+  bind('#name', (e) => { cfg.name = e.value.trim(); });
+  bind('#link', (e) => { cfg.link = e.value; }, 'change');
+  bind('#url', (e) => { cfg.mqtt = { url: e.value.trim() }; });
+  bind('#speed', (e) => { cfg.speed = Number(e.value); });
+  bind('#terminal', (e) => { cfg.terminal = e.checked; }, 'change');
+  $('#preset').addEventListener('change', () => {
+    cfg = plain(RC.preset($('#preset').value)); showSettings(); drawButtons(); render();
+  });
+
+  // editor: extra buttons
+  const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
+  function drawButtons() {
+    $('#nobtn').hidden = cfg.buttons.length > 0;
+    $('#buttons').innerHTML = cfg.buttons.map((b, i) => `
+      <div class="bcard"><div class="bhead"><span>${T.btn} ${i + 1}</span><button class="btn del b-del" data-i="${i}">${T.del}</button></div>
+        <div class="row">
+          <div class="field"><label>${T.label}</label><input type="text" class="b-label" value="${esc(b.label)}" autocomplete="off"></div>
+          <div class="field"><label>${T.angle}</label><select class="b-angle">${ANGLES.map((a) => `<option value="${a}"${a === b.angle ? ' selected' : ''}>${ARROWS[a / 45]} ${a}°</option>`).join('')}</select></div>
+          <div class="field"><label>${T.press}</label><input type="text" class="b-press" value="${esc(b.press)}" autocomplete="off" autocapitalize="off" spellcheck="false"></div>
+          <div class="field"><label>${T.release}</label><input type="text" class="b-release" value="${esc(b.release)}" autocomplete="off" autocapitalize="off" spellcheck="false"></div>
+          <div class="field"><label>${T.x}</label><input type="number" class="b-x" min="0" max="100" step="1" value="${b.x}"></div>
+          <div class="field"><label>${T.y}</label><input type="number" class="b-y" min="0" max="100" step="1" value="${b.y}"></div>
+        </div></div>`).join('');
+  }
+  $('#buttons').addEventListener('input', (e) => {
+    const card = e.target.closest('.bcard'); if (!card) return;
+    const b = cfg.buttons[[...$('#buttons').children].indexOf(card)], c = e.target.classList;
+    if (c.contains('b-label')) b.label = e.target.value;
+    else if (c.contains('b-press')) b.press = e.target.value;
+    else if (c.contains('b-release')) b.release = e.target.value;
+    else if (c.contains('b-angle')) b.angle = Number(e.target.value);
+    else if (c.contains('b-x')) b.x = Math.min(100, Math.max(0, Number(e.target.value) || 0));
+    else if (c.contains('b-y')) b.y = Math.min(100, Math.max(0, Number(e.target.value) || 0));
+    render();
+  });
+  $('#buttons').addEventListener('click', (e) => {
+    const del = e.target.closest('.b-del'); if (!del) return;
+    cfg.buttons.splice(Number(del.dataset.i), 1); drawButtons(); render();
+  });
+  $('#add').addEventListener('click', () => {
+    const n = cfg.buttons.length;
+    cfg.buttons.push({ label: T.btn + ' ' + (n + 1), press: 'A', release: '', angle: 0, x: 88, y: Math.min(90, 20 + 20 * (n % 4)) });
+    drawButtons(); render();
+    const last = $('#buttons').lastElementChild; if (last) last.scrollIntoView({ block: 'nearest' });
+  });
+
+  // outputs
+  const say = (text, err) => { const m = $('#copymsg'); m.textContent = text; m.className = 'msg' + (err ? ' err' : ''); };
+  $('#copy').addEventListener('click', async () => {
+    const text = html(), box = $('#copybox');
+    try {
+      if (!navigator.clipboard || !navigator.clipboard.writeText) throw new Error('no clipboard');
+      await navigator.clipboard.writeText(text);
+      box.hidden = true; say(T.copied);
+    } catch (e) {
+      box.hidden = false; box.value = text; box.focus(); box.select(); say(T.copyManual);
+    }
+  });
+  const framed = window.self !== window.top;
+  if (framed) $('#download').hidden = true;
+  $('#download').addEventListener('click', () => {
+    const url = URL.createObjectURL(new Blob([html()], { type: 'text/html' }));
+    const a = Object.assign(document.createElement('a'), { href: url, download: 'controller-' + (cfg.name.replace(/[^\w-]+/g, '') || 'robot') + '.html' });
+    document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(url), 5000);
+  });
+  $('#testrobot').addEventListener('click', () => { save(); window.open('dev.html?saved=1&lang=' + lang); });
+  $('#testfile').addEventListener('click', () => {
+    const text = $('#paste').value;
+    $('#pastemsg').textContent = text.trim() ? '' : T.pasteEmpty;
+    if (text.trim()) window.open(URL.createObjectURL(new Blob([text], { type: 'text/html' })));
+  });
+
+  showSettings(); drawButtons(); fit(); render();
+})();
+</script>
+</body>
+</html>

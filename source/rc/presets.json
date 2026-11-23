@@ -1,0 +1,15 @@
+{
+  "hello": {"name": "R4-T01", "link": "ble", "mqtt": {"url": "wss://broker.hivemq.com:8884/mqtt"}, "mode": "none", "speed": 60, "terminal": true, "buttons": []},
+  "tap4": {"name": "R4-T01", "link": "ble", "mqtt": {"url": "wss://broker.hivemq.com:8884/mqtt"}, "mode": "tap4", "speed": 60, "terminal": false, "buttons": []},
+  "hold4": {"name": "R4-T01", "link": "ble", "mqtt": {"url": "wss://broker.hivemq.com:8884/mqtt"}, "mode": "hold4", "speed": 60, "terminal": false, "buttons": []},
+  "stick1": {"name": "R4-T01", "link": "ble", "mqtt": {"url": "wss://broker.hivemq.com:8884/mqtt"}, "mode": "stick1", "speed": 60, "terminal": false, "buttons": []},
+  "stick2arm": {"name": "R4-T01", "link": "ble", "mqtt": {"url": "wss://broker.hivemq.com:8884/mqtt"}, "mode": "stick2", "speed": 60, "terminal": false, "buttons": [
+    {"label": {"th": "แขนขึ้น", "en": "Arm up", "lo": "ແຂນຂຶ້ນ"}, "press": "U", "release": "", "angle": 0, "x": 88, "y": 30},
+    {"label": {"th": "แขนลง", "en": "Arm down", "lo": "ແຂນລົງ"}, "press": "D", "release": "", "angle": 180, "x": 88, "y": 70}
+  ]},
+  "mqtt-hello": {"name": "R4-T01", "link": "mqtt", "mqtt": {"url": "wss://broker.hivemq.com:8884/mqtt"}, "mode": "none", "speed": 60, "terminal": true, "buttons": []},
+  "mqtt-drive": {"name": "R4-T01", "link": "mqtt", "mqtt": {"url": "wss://broker.hivemq.com:8884/mqtt"}, "mode": "stick2", "speed": 60, "terminal": false, "buttons": [
+    {"label": {"th": "แขนขึ้น", "en": "Arm up", "lo": "ແຂນຂຶ້ນ"}, "press": "U", "release": "", "angle": 0, "x": 88, "y": 30},
+    {"label": {"th": "แขนลง", "en": "Arm down", "lo": "ແຂນລົງ"}, "press": "D", "release": "", "angle": 180, "x": 88, "y": 70}
+  ]}
+}

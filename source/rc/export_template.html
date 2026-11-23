@@ -1,0 +1,70 @@
+<!--== page ==-->
+<!DOCTYPE html>
+<!--@ th=จอยบังคับหุ่น MATRIX Mini R4 · ไฟล์เดียวจบ แก้ได้ทุกบรรทัด|en=MATRIX Mini R4 robot controller · one file, change any line you like|lo=ຈອຍຄວບຄຸມຫຸ່ນຍົນ MATRIX Mini R4 · ໄຟລ໌ດຽວຈົບ ແກ້ໄດ້ທຸກແຖວ -->
+<html lang="[[lang]]">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<link rel="icon" href="data:,">
+<title>[[name]] · {{title}}</title>
+<style>
+[[css]]
+</style>
+</head>
+<body>
+<!--@ th=แถบบน: ปุ่มเชื่อมต่อ สถานะ และข้อความล่าสุด|en=Top bar: connect button, status and last messages|lo=ແຖບເທິງ: ປຸ່ມເຊື່ອມຕໍ່ ສະຖານະ ແລະ ຂໍ້ຄວາມລ່າສຸດ -->
+<header id="bar">
+  <button id="connect">{{connect}}</button>
+  <i id="dot"></i>
+  <span id="status">{{off}}</span>
+  <code id="out"></code>
+  <code id="in"></code>
+</header>
+<p id="note"></p>
+<div id="main">
+[[pad]]
+[[term]]
+</div>
+<script>
+[[js]]
+</script>
+</body>
+</html>
+<!--== pad ==-->
+<main id="pad"[[x]]>
+[[ctl]]
+[[xbtns]]
+</main>
+<!--== dirs ==-->
+  <!--@ th=ปุ่ม 4 ทิศ: เปลี่ยน data-cmd เพื่อส่งข้อความอื่น|en=4 direction buttons: change data-cmd to send other text|lo=ປຸ່ມ 4 ທິດ: ປ່ຽນ data-cmd ເພື່ອສົ່ງຂໍ້ຄວາມອື່ນ -->
+  <div class="dirs">
+    <button class="dark up" data-cmd="F"><i style="transform:rotate(0deg)"></i></button>
+    <button class="dark left" data-cmd="L"><i style="transform:rotate(270deg)"></i></button>
+    <button class="stop">{{stop}}</button>
+    <button class="dark right" data-cmd="R"><i style="transform:rotate(90deg)"></i></button>
+    <button class="dark down" data-cmd="B"><i style="transform:rotate(180deg)"></i></button>
+  </div>
+<!--== stick1 ==-->
+  <!--@ th=คันโยกเดียว: ดันขึ้น = เดินหน้า ดันไปข้าง = เลี้ยว|en=One stick: push up = forward, push sideways = turn|lo=ຄັນໂຍກດຽວ: ດັນຂຶ້ນ = ເດີນໜ້າ ດັນໄປຂ້າງ = ລ້ຽວ -->
+  <div class="ctl">
+    <div class="stick round" data-axis="xy"><b></b></div>
+    <button class="stop">{{stop}}</button>
+  </div>
+<!--== stick2 ==-->
+  <!--@ th=สองคันโยก: ซ้าย = เดินหน้า/ถอย ขวา = เลี้ยว|en=Two sticks: left = forward/back, right = turn|lo=ສອງຄັນໂຍກ: ຊ້າຍ = ເດີນໜ້າ/ຖອຍ ຂວາ = ລ້ຽວ -->
+  <div class="ctl">
+    <div class="stick tall" data-axis="y"><b></b></div>
+    <button class="stop">{{stop}}</button>
+    <div class="stick wide" data-axis="x"><b></b></div>
+  </div>
+<!--== xbtns ==-->
+  <!--@ th=ปุ่มพิเศษ: left/top = ตำแหน่ง (%) · data-press = ส่งตอนกด · data-release = ส่งตอนปล่อย · rotate = หมุนลูกศร|en=Extra buttons: left/top = position (%) · data-press = sent on press · data-release = sent on release · rotate = turns the arrow|lo=ປຸ່ມພິເສດ: left/top = ຕຳແໜ່ງ (%) · data-press = ສົ່ງຕອນກົດ · data-release = ສົ່ງຕອນປ່ອຍ · rotate = ໝຸນລູກສອນ -->
+[[list]]
+<!--== xbtn ==-->
+  <button class="dark xbtn" style="left:[[x]]%;top:[[y]]%" data-press="[[press]]" data-release="[[release]]"><i style="transform:rotate([[angle]]deg)"></i><span>[[label]]</span></button>
+<!--== term ==-->
+<!--@ th=หน้าต่างข้อความ: ดูข้อความที่ส่งและรับ พิมพ์ส่งเองได้|en=Terminal: see what is sent and received, and type your own|lo=ໜ້າຕ່າງຂໍ້ຄວາມ: ເບິ່ງຂໍ້ຄວາມທີ່ສົ່ງ ແລະ ຮັບ ພິມສົ່ງເອງໄດ້ -->
+<section id="term">
+  <div id="log"></div>
+  <form id="sendForm"><input id="msg" placeholder="{{typeHere}}" autocomplete="off"><button>{{send}}</button></form>
+</section>

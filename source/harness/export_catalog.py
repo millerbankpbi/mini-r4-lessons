@@ -5,7 +5,7 @@ src = re.sub(r'&(?!amp;|lt;|gt;|quot;|apos;|#)', '&amp;', src)
 root = ET.fromstring(src)
 WANT = {'%{BKY_CATEGORY__MINI}': 'core', '%{BKY_CATEGORY__MOVEMENT}': 'move', '%{BKY_CATEGORY__MINI_LOOKS}': 'looks',
         '%{BKY_CATEGORY__MINI_SERIAL}': 'serial', '%{BKY_CATEGORY__MINI_SENSORS}': 'sensing',
-        '%{BKY_CATEGORY_CONTROL}': 'control', '%{BKY_CATEGORY_OPERATORS}': 'ops'}
+        '%{BKY_CATEGORY__MINI_IOT}': 'iot', '%{BKY_CATEGORY_CONTROL}': 'control', '%{BKY_CATEGORY_OPERATORS}': 'ops'}
 SENSE_KEEP = {'mini_motion_reset', 'mini_motion_getAccel', 'mini_motion_getGyro', 'mini_motion_getEuler', 'mini_MXGrayscale_getGrayscale',
               'mini_MXPot_getPot', 'mini_i2c_MXcolorV3_begin', 'mini_i2c_MXcolorV3_getColor', 'mini_i2c_MXLaserV2_begin', 'mini_i2c_MXLaserV2_getDistance'}
 items = []
@@ -44,6 +44,8 @@ with sync_playwright() as pw:
                 rec['shape'] = shape
                 rec['value'] = v['code'] if shape in ('rep', 'bool') else None
                 rec['defs'] = v['defs']; rec['setups'] = v['setups']
+                if shape == 'hat' and v['defs']:  # hat blocks only add a callback definition: show that function as their code
+                    rec['value'] = '\n'.join(l for l in v['defs'][-1].splitlines() if l.strip())
                 if shape in ('stack', 'cap'):
                     body = it['xml']
                 elif shape in ('rep', 'bool'):
