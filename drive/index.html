@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>R4 Drive · จอยขับเคลื่อนหุ่น</title>
+<link rel="icon" href="data:,">
+<style>
+/* สีและขนาดหลักของหน้า แก้ตรงนี้ที่เดียว */
+:root {
+  --bg: #ECE8F7; --dots: #D3CBEA; --ink: #2A2440; --muted: #6E6688;
+  --card: #FFFFFF; --line: #DDD5F3; --accent: #B7A4EC; --dark: #3B3256;
+  --stop: #EE6B5E; --ok: #2FA36B; --wait: #E9A23B;
+  --btn: min(25vw, 112px);
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; min-height: 100%; }
+body {
+  font-family: system-ui, -apple-system, "Segoe UI", "Noto Sans Thai", "Leelawadee UI", sans-serif;
+  color: var(--ink);
+  background: var(--bg) radial-gradient(var(--dots) 1.3px, transparent 1.4px) 0 0 / 18px 18px;
+  padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+  -webkit-tap-highlight-color: transparent;
+}
+header { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; padding: 12px 14px 4px; }
+#connect {
+  border: 0; border-radius: 999px; background: var(--dark); color: #fff;
+  font: inherit; font-weight: 600; padding: 10px 18px; cursor: pointer;
+}
+#connect[hidden] { display: none; }
+#dot { width: 12px; height: 12px; border-radius: 50%; background: #C9C1DE; flex: none; }
+#dot.on { background: var(--ok); }
+#dot.busy { background: var(--wait); }
+#state { color: var(--muted); font-size: 15px; }
+#note { margin: 4px 14px 0; font-size: 14px; color: #B0453A; }
+#note:empty { display: none; }
+
+main { display: flex; flex-wrap: wrap; gap: 22px; justify-content: center; align-items: center; padding: 14px; }
+
+/* ปุ่มบังคับ 4 ทิศ + ปุ่มหยุดตรงกลาง */
+.pad {
+  display: grid; gap: 14px;
+  grid-template-columns: repeat(3, var(--btn)); grid-template-rows: repeat(3, var(--btn));
+  grid-template-areas: ". f ." "l s r" ". b .";
+  touch-action: manipulation; -webkit-user-select: none; user-select: none;
+}
+.pad button {
+  border: 0; border-radius: 50%; cursor: pointer; font: inherit;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px;
+  background: radial-gradient(circle at 35% 30%, #4E4470, var(--dark) 70%);
+  color: #E9E3FA; font-size: 14px; box-shadow: 0 6px 14px rgba(59, 50, 86, .28);
+  -webkit-touch-callout: none; transition: transform .08s, opacity .15s;
+}
+.pad button:active { transform: scale(.94); }
+.pad button:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
+.tri { width: 34%; aspect-ratio: 1; background: var(--accent); clip-path: polygon(50% 8%, 96% 88%, 4% 88%); }
+#f { grid-area: f; } #b { grid-area: b; } #l { grid-area: l; } #r { grid-area: r; }
+#b .tri { transform: rotate(180deg); } #l .tri { transform: rotate(-90deg); } #r .tri { transform: rotate(90deg); }
+#s { grid-area: s; background: var(--stop); color: #fff; font-weight: 700; font-size: 18px; box-shadow: 0 6px 16px rgba(238, 107, 94, .35); }
+.pad.busy button:not(#s) { opacity: .4; }
+.pad.off button:not(#s) { opacity: .55; }
+
+/* การ์ดปรับหุ่น */
+.card {
+  background: var(--card); border: 1px solid var(--line); border-radius: 18px;
+  padding: 14px 16px 10px; width: min(100%, 380px);
+}
+.card h2 { margin: 0 0 6px; font-size: 18px; }
+.set { margin: 12px 0; }
+.set label { display: flex; justify-content: space-between; font-weight: 600; font-size: 15px; }
+.set output { font-variant-numeric: tabular-nums; color: var(--dark); }
+.row { display: flex; align-items: center; gap: 8px; margin-top: 6px; }
+.row input { flex: 1; accent-color: var(--dark); height: 28px; }
+.row button {
+  width: 40px; height: 40px; border-radius: 12px; border: 1px solid var(--line);
+  background: #F6F3FD; font: inherit; font-size: 20px; color: var(--ink); cursor: pointer;
+}
+.tip { margin: 8px 0 4px; font-size: 13.5px; line-height: 1.5; color: var(--muted); }
+
+@media (orientation: landscape) and (max-height: 520px) {
+  :root { --btn: min(24vh, 96px); }
+  main { flex-wrap: nowrap; align-items: flex-start; }
+  .card { max-height: calc(100vh - 80px); overflow: auto; }
+}
+</style>
+</head>
+<body>
+<header>
+  <button id="connect">เชื่อมต่อ Bluetooth</button>
+  <span id="dot"></span>
+  <span id="state">ยังไม่เชื่อมต่อ</span>
+</header>
+<p id="note"></p>
+
+<main>
+  <div class="pad off" id="pad">
+    <button id="f" data-cmd="F" aria-label="เดินหน้า 1 รอบล้อ"><span class="tri"></span>เดินหน้า</button>
+    <button id="l" data-cmd="L" aria-label="เลี้ยวซ้าย 90 องศา"><span class="tri"></span>ซ้าย</button>
+    <button id="s" data-cmd="S" aria-label="หยุด">หยุด</button>
+    <button id="r" data-cmd="R" aria-label="เลี้ยวขวา 90 องศา"><span class="tri"></span>ขวา</button>
+    <button id="b" data-cmd="B" aria-label="ถอยหลัง 1 รอบล้อ"><span class="tri"></span>ถอย</button>
+  </div>
+
+  <section class="card">
+    <h2>ปรับหุ่น</h2>
+    <div class="set">
+      <label for="pl">ล้อซ้าย <output id="pl-v"></output></label>
+      <div class="row"><button data-step="pl,-1" aria-label="ลดล้อซ้าย">−</button><input type="range" id="pl" min="10" max="100"><button data-step="pl,1" aria-label="เพิ่มล้อซ้าย">+</button></div>
+    </div>
+    <div class="set">
+      <label for="pr">ล้อขวา <output id="pr-v"></output></label>
+      <div class="row"><button data-step="pr,-1" aria-label="ลดล้อขวา">−</button><input type="range" id="pr" min="10" max="100"><button data-step="pr,1" aria-label="เพิ่มล้อขวา">+</button></div>
+    </div>
+    <p class="tip">กดเดินหน้าแล้วหุ่นเบี้ยวไปทางซ้าย แปลว่าล้อซ้ายหมุนช้ากว่า ให้เพิ่มล้อซ้าย (เบี้ยวขวาก็เพิ่มล้อขวา) ปรับทีละ 1–2</p>
+    <div class="set">
+      <label for="tu">มุมเลี้ยว 90° <output id="tu-v"></output></label>
+      <div class="row"><button data-step="tu,-5" aria-label="ลดมุมเลี้ยว">−</button><input type="range" id="tu" min="60" max="400" step="5"><button data-step="tu,5" aria-label="เพิ่มมุมเลี้ยว">+</button></div>
+    </div>
+    <p class="tip">ตัวเลขนี้คือองศาที่ล้อหมุนตอนเลี้ยว ถ้าเลี้ยวไม่ถึง 90° ให้เพิ่ม ถ้าเลี้ยวเกินให้ลด ลองกดเลี้ยว 4 ครั้งให้หุ่นหมุนครบรอบพอดี</p>
+  </section>
+</main>
+
+<script>
+// ===== ตั้งค่า =====
+// หน้านี้ใช้ได้สองแบบ: เปิดผ่าน https แล้วต่อ Bluetooth หรือเปิดจากหุ่นที่ปล่อย WiFi เอง (http://192.168.4.1)
+// ตัวสร้าง page.h จะเปลี่ยนค่านี้เป็น true ให้เองในหน้าที่หุ่นส่งมา
+const VIA_WIFI = /*WIFI*/false;
+const UART = '6e400001-b5a3-f393-e0a9-e50e24dcca9e';  // บริการ Nordic UART (เหมือนบล็อก Bluetooth ของ MATRIXblock)
+const TO_ROBOT = '6e400002-b5a3-f393-e0a9-e50e24dcca9e';
+const FROM_ROBOT = '6e400003-b5a3-f393-e0a9-e50e24dcca9e';
+const DEFAULTS = { pl: 50, pr: 50, tu: 180 };  // กำลังล้อซ้าย กำลังล้อขวา และองศาล้อตอนเลี้ยว 90°
+const MOVE_TIMEOUT = 8000;  // ถ้าไม่ได้ยินว่าหุ่นเดินเสร็จภายในเวลานี้ ให้ปุ่มกดได้อีกครั้ง
+
+const $ = id => document.getElementById(id);
+const pad = $('pad');
+let online = false, busy = false, busyTimer = 0;
+let toRobot = null, device = null, writing = Promise.resolve();
+
+// ===== ค่าที่ปรับไว้ (จำไว้ในเครื่อง) =====
+let cfg = load();
+function load() {
+  try {
+    const c = JSON.parse(localStorage.getItem('r4drive') || '{}');
+    return {
+      pl: clamp(Number(c.pl) || DEFAULTS.pl, 10, 100),
+      pr: clamp(Number(c.pr) || DEFAULTS.pr, 10, 100),
+      tu: clamp(Number(c.tu) || DEFAULTS.tu, 60, 400)
+    };
+  } catch (e) { return { ...DEFAULTS }; }
+}
+function clamp(v, lo, hi) { return Math.min(hi, Math.max(lo, Math.round(v))); }
+function showCfg() {
+  for (const k of ['pl', 'pr', 'tu']) {
+    $(k).value = cfg[k];
+    $(k + '-v').textContent = k === 'tu' ? cfg[k] + '°' : cfg[k] + '%';
+  }
+}
+let cfgTimer = 0;
+function setCfg(k, v) {
+  const lim = k === 'tu' ? [60, 400] : [10, 100];
+  cfg[k] = clamp(v, lim[0], lim[1]);
+  showCfg();
+  try { localStorage.setItem('r4drive', JSON.stringify(cfg)); } catch (e) {}
+  clearTimeout(cfgTimer);
+  cfgTimer = setTimeout(sendCfg, 250);  // รอให้เลื่อนเสร็จก่อนค่อยส่ง จะได้ไม่ส่งถี่เกิน
+}
+// ข้อความตั้งค่า: C,ล้อซ้าย,ล้อขวา,องศาเลี้ยว เช่น C,52,50,185
+function sendCfg() { if (online) send(`C,${cfg.pl},${cfg.pr},${cfg.tu}`); }
+
+// ===== สถานะบนจอ =====
+function setState(text) { $('state').textContent = text; }
+function note(text) { $('note').textContent = text || ''; }
+function refresh() {
+  $('dot').className = !online ? '' : busy ? 'busy' : 'on';
+  pad.classList.toggle('off', !online);
+  pad.classList.toggle('busy', online && busy);
+}
+function setBusy(b) {
+  busy = b;
+  clearTimeout(busyTimer);
+  if (b) busyTimer = setTimeout(() => setBusy(false), MOVE_TIMEOUT);
+  setState(!online ? 'ยังไม่เชื่อมต่อ' : (b ? 'หุ่นกำลังเคลื่อนที่…' : 'พร้อม · ' + name()));
+  refresh();
+}
+function name() { return VIA_WIFI ? location.hostname : (device && device.name) || 'หุ่น'; }
+
+// ===== ส่งคำสั่ง =====
+// F เดินหน้า, B ถอยหลัง, L เลี้ยวซ้าย, R เลี้ยวขวา, S หยุด
+function command(c) {
+  if (!online) { note('กดเชื่อมต่อก่อน'); return; }
+  if (c === 'S') { send('S'); return; }
+  if (busy) return;  // หุ่นยังเดินไม่เสร็จ ไม่ส่งซ้ำ
+  setBusy(true);
+  send(c);
+}
+function send(text) {
+  if (VIA_WIFI) return sendWifi(text);
+  // Bluetooth ส่งได้ทีละข้อความ จึงต่อคิวไว้
+  writing = writing.then(async () => {
+    if (!toRobot) return;
+    const data = new TextEncoder().encode(text);
+    if (toRobot.writeValueWithoutResponse) await toRobot.writeValueWithoutResponse(data);
+    else await toRobot.writeValue(data);
+  }).catch(() => {});
+  return writing;
+}
+// หุ่นตอบกลับ: D = เดินเสร็จหรือหยุดแล้ว, BUSY = ยังเดินอยู่
+function fromRobot(text) {
+  text = text.trim();
+  if (text === 'D') setBusy(false);
+}
+
+// ===== Bluetooth =====
+async function connectBluetooth() {
+  note('');
+  if (!window.isSecureContext) { note('ต้องเปิดหน้านี้ผ่าน https เช่น GitHub Pages จึงจะใช้ Bluetooth ได้'); return; }
+  if (!navigator.bluetooth) { note('เบราว์เซอร์นี้ใช้ Bluetooth ไม่ได้ · Android และคอมพิวเตอร์ใช้ Chrome · iPhone ใช้แอป Bluefy'); return; }
+  try {
+    if (device && device.gatt.connected) device.gatt.disconnect();  // เปลี่ยนหุ่น: ตัดตัวเดิมก่อน
+    device = await navigator.bluetooth.requestDevice({ filters: [{ services: [UART] }] });
+    device.addEventListener('gattserverdisconnected', lost);
+    setState('กำลังเชื่อมต่อ…');
+    const server = await device.gatt.connect();
+    const service = await server.getPrimaryService(UART);
+    toRobot = await service.getCharacteristic(TO_ROBOT);
+    const listen = await service.getCharacteristic(FROM_ROBOT);
+    await listen.startNotifications();
+    listen.addEventListener('characteristicvaluechanged', e => fromRobot(new TextDecoder().decode(e.target.value)));
+    online = true;
+    $('connect').textContent = 'เปลี่ยนหุ่น';
+    setBusy(false);
+    sendCfg();
+  } catch (e) {
+    if (e && e.name === 'NotFoundError') return;  // ปิดหน้าต่างเลือกหุ่นเอง
+    note('เชื่อมต่อไม่สำเร็จ: ' + (e && e.message ? e.message : e));
+    lost();
+  }
+}
+function lost() {
+  online = false; toRobot = null;
+  $('connect').textContent = 'เชื่อมต่อ Bluetooth';
+  setBusy(false);
+}
+
+// ===== WiFi (หน้าที่หุ่นส่งมา) =====
+async function sendWifi(text) {
+  try {
+    const res = await fetch('/c?x=' + text, { cache: 'no-store' });
+    const answer = (await res.text()).trim();
+    if (answer === 'OK' && busy) waitWifi();
+    if (answer === 'BUSY') waitWifi();
+    if (answer === 'D') setBusy(false);
+  } catch (e) {
+    note('ติดต่อหุ่นไม่ได้ ตรวจว่ามือถือยังต่อ WiFi ของหุ่นอยู่');
+    setBusy(false);
+  }
+}
+// ถามหุ่นทุก 0.25 วินาทีว่าเดินเสร็จหรือยัง
+async function waitWifi() {
+  while (busy) {
+    await new Promise(ok => setTimeout(ok, 250));
+    try {
+      const s = (await (await fetch('/s', { cache: 'no-store' })).text()).trim();
+      if (s === 'ready') setBusy(false);
+    } catch (e) { /* ลองใหม่รอบหน้า */ }
+  }
+}
+
+// ===== ผูกปุ่ม =====
+for (const btn of pad.querySelectorAll('button')) {
+  btn.addEventListener('click', () => command(btn.dataset.cmd));
+  btn.addEventListener('contextmenu', e => e.preventDefault());
+}
+for (const k of ['pl', 'pr', 'tu']) $(k).addEventListener('input', e => setCfg(k, Number(e.target.value)));
+for (const b of document.querySelectorAll('[data-step]')) {
+  const [k, d] = b.dataset.step.split(',');
+  b.addEventListener('click', () => setCfg(k, cfg[k] + Number(d)));
+}
+// คีย์บอร์ด (ทดสอบบนคอมพิวเตอร์): ลูกศร = ทิศ, เว้นวรรค = หยุด
+const KEYS = { ArrowUp: 'F', ArrowDown: 'B', ArrowLeft: 'L', ArrowRight: 'R', ' ': 'S' };
+document.addEventListener('keydown', e => {
+  if (e.target.tagName === 'INPUT' || !KEYS[e.key] || e.repeat) return;
+  e.preventDefault();
+  command(KEYS[e.key]);
+});
+
+showCfg();
+if (VIA_WIFI) {
+  $('connect').hidden = true;
+  online = true;
+  setBusy(false);
+  sendCfg();
+} else {
+  $('connect').addEventListener('click', connectBluetooth);
+  setBusy(false);
+}
+</script>
+</body>
+</html>
