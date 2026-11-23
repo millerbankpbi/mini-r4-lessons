@@ -61,5 +61,65 @@ const FULL_RUN = 'F33 R F30 R F32 B32 U F63 B32 L F30 R F32 B32 R F60 L F32 B32 
 const rf = run(FULL_RUN);
 ok(rf.total === 200 && rf.touches === 0 && rf.bonus && !rf.fell, 'เส้นทางอ้างอิงได้คะแนนเต็ม 200 ไม่แตะเส้นดำ', JSON.stringify(rf.rows));
 
+// ===================== วนซ้ำ ฟังก์ชัน และเงื่อนไข =====================
+const mv = (op, v) => ({ kind: 'move', op, v, id: op + (v || '') });
+const dist = { dist: true }, n = (x) => ({ num: x });
+const C = (tree, funcs) => QB.compile(tree, funcs);
+const ran = (tree, funcs) => QB.run(C(tree, funcs).code).result;
+
+ok(C([mv('F', 33), mv('R'), { kind: 'reset', id: 'z' }]).text === 'F33 R Z', 'บล็อกต่อกันธรรมดา ได้ข้อความแบบเดิม (+ Z เริ่มนับระยะใหม่)');
+
+const sq = C([{ kind: 'repeat', n: 4, id: 'rep', body: [mv('F', 10), mv('R')] }]);
+ok(sq.text === 'P4 Q5 F10 R J1', 'ทำซ้ำ 4 ครั้ง แปลงเป็น P4 Q5 F10 R J1', sq.text);
+const rq = QB.run(sq.code).result;
+ok(Math.abs(rq.robot.x - QB.START.x) < 0.01 && Math.abs(rq.robot.y - QB.START.y) < 0.01 && rq.robot.h === 0 && rq.odo === 40,
+  'ทำซ้ำ 4 ครั้ง (เดินหน้า 10 เลี้ยวขวา) กลับมาที่เดิม วิ่งรวม 40 ซม.', JSON.stringify(rq.robot) + ' odo ' + rq.odo);
+ok(sq.src.join() === 'rep,rep,F10,R,rep', 'ทุกคำสั่งรู้ว่ามาจากบล็อกไหน (ไว้ไฮไลต์)', sq.src.join());
+ok(ran([{ kind: 'repeat', n: 0, id: 'r0', body: [mv('F', 50)] }]).odo === 0, 'ทำซ้ำ 0 ครั้ง ไม่ทำข้างในเลย');
+
+const until = C([{ kind: 'loop', until: true, cond: { a: dist, op: '>=', b: n(60) }, id: 'u', body: [mv('F', 7)] }]);
+ok(until.text === 'Yd<60@3 F7 J0', 'ทำซ้ำจนกว่า ระยะ ≥ 60 แปลงเป็น "ขณะที่ ระยะ < 60"', until.text);
+const ru = QB.run(until.code).result;
+ok(ru.odo === 63 && Math.abs(ru.robot.y - (QB.START.y - 63)) < 0.01, 'เดินหน้าทีละ 7 จนระยะ ≥ 60: หยุดที่ 63 ซม. (9 รอบ)', ru.odo);
+const rw = ran([{ kind: 'loop', until: false, cond: { a: dist, op: '<', b: n(30) }, id: 'w', body: [mv('F', 10)] }]);
+ok(rw.odo === 30, 'ทำซ้ำขณะที่ ระยะ < 30 (เดินหน้าทีละ 10) หยุดที่ 30 ซม.', rw.odo);
+ok(ran([{ kind: 'loop', until: true, cond: { a: dist, op: '=', b: n(20) }, id: 'e', body: [mv('F', 5)] }]).odo === 20, 'เครื่องหมาย = ใช้ได้ (ระยะปัดเป็นซม.เต็ม)');
+ok(ran([mv('F', 30), { kind: 'reset', id: 'z' }, { kind: 'loop', until: true, cond: { a: dist, op: '>=', b: n(20) }, id: 'u2', body: [mv('F', 10)] }]).odo === 20,
+  'เริ่มนับระยะใหม่แล้ว ระยะนับจาก 0 อีกครั้ง');
+ok(C([{ kind: 'loop', until: false, cond: { a: n(1), op: '>', b: n(2) }, id: 'c', body: [mv('F', 10)] }]).text === '', 'เงื่อนไขตัวเลขล้วนที่ไม่จริง ไม่ทำข้างในเลย');
+
+const fn = C([{ kind: 'call', name: 'ดัน', id: 'c1' }, mv('U'), { kind: 'call', name: 'ดัน', id: 'c2' }],
+  { 'ดัน': { id: 'f', body: [mv('F', 20), mv('B', 20)] } });
+ok(fn.text === 'F20 B20 U F20 B20', 'เรียกฟังก์ชัน 2 ครั้ง ได้คำสั่งข้างในฟังก์ชัน 2 ชุด', fn.text);
+let e1 = {};
+try { C([{ kind: 'call', name: 'วน', id: 'c' }], { 'วน': { id: 'f', body: [mv('F', 5), { kind: 'call', name: 'วน', id: 'inner' }] } }); } catch (e) { e1 = e; }
+ok(/เรียกตัวเอง/.test(e1.message) && e1.blockId === 'inner', 'ฟังก์ชันเรียกตัวเอง แจ้งผิดและชี้บล็อกที่เรียก', e1.message);
+let e2 = {};
+try { C([{ kind: 'repeat', n: 2.5, id: 'bad', body: [] }]); } catch (e) { e2 = e; }
+ok(/จำนวนเต็ม/.test(e2.message) && e2.blockId === 'bad', 'จำนวนรอบไม่ใช่จำนวนเต็ม แจ้งผิด', e2.message);
+let e3 = {};
+try { C(Array.from({ length: 201 }, (_, i) => mv('F', 1 + (i % 9)))); } catch (e) { e3 = e; }
+ok(/ยาวเกิน 200/.test(e3.message), 'โปรแกรมเกิน 200 คำสั่ง แจ้งผิด', e3.message);
+let deep = [mv('F', 1)];
+for (let i = 0; i < 9; i++) deep = [{ kind: 'repeat', n: 1, id: 'd' + i, body: deep }];
+let e4 = {};
+try { C(deep); } catch (e) { e4 = e; }
+ok(/ไม่เกิน 8 ชั้น/.test(e4.message), 'ทำซ้ำซ้อนกันเกิน 8 ชั้น แจ้งผิด', e4.message);
+
+// กันวนไม่จบ
+const stuck = QB.run(C([{ kind: 'loop', until: false, cond: { a: dist, op: '<', b: n(10) }, id: 's', body: [] }]).code);
+ok(stuck.result.endReason === 'loop' && stuck.events.some((e) => /ไม่ขยับ/.test(e.msg)), 'วนซ้ำแต่ไม่มีการเคลื่อนที่ จำลองหยุดเองพร้อมบอกสาเหตุ');
+const spin = QB.run(C([{ kind: 'loop', until: false, cond: { a: n(0), op: '<', b: n(1) }, id: 's', body: [mv('R')] }]).code);
+ok(spin.result.endReason === 'time' && spin.result.time <= QB.LIMIT.seconds + 2, 'หมุนวนตลอดไป จำลองหยุดที่ 3 นาที', spin.result.time);
+
+// ข้อความที่ส่งให้หุ่น อ่านกลับได้ตรงกัน
+const big = C([mv('S', 60), { kind: 'repeat', n: 3, id: 'r', body: [
+  { kind: 'loop', until: true, cond: { a: n(12.5), op: '<=', b: dist }, id: 'l', body: [mv('F', 5)] }, mv('L'), { kind: 'reset', id: 'z' }] }]);
+ok(QB.toText(QB.parseCode(big.text)) === big.text, 'แปลงข้อความไป-กลับได้ตรงกัน (รวมคำสั่งวนซ้ำ)', big.text);
+ok(big.text.split(' ').every((tk) => tk.length + 1 <= 20), 'ทุกคำสั่งสั้นพอส่งทาง Bluetooth (ไม่เกิน 20 ตัวอักษร)');
+let e5 = '';
+try { QB.parse('F10 J0'); } catch (e) { e5 = e.message; }
+ok(/พิมพ์เองไม่ได้/.test(e5), 'พิมพ์คำสั่งวนซ้ำ (J P Q Y) เองเพื่อสร้างบล็อกไม่ได้ แจ้งเป็นภาษาไทย', e5);
+
 console.log('\n' + pass + ' ผ่าน, ' + fail + ' ไม่ผ่าน');
 process.exit(fail ? 1 : 0);

@@ -61,27 +61,119 @@
   const STEP_CM = 0.5, STEP_DEG = 3;   // ความละเอียดการจำลอง
 
   // ===================== โปรแกรม: ข้อความเดียวกับที่ส่งให้หุ่น =====================
-  // F30 = เดินหน้า 30 ซม., B20 = ถอยหลัง 20 ซม., L = เลี้ยวซ้าย 90°, R = เลี้ยวขวา 90°, U = กลับหลัง 180°, S50 = ความเร็ว 50
-  function toText(steps) {
-    return steps.map((s) => s.op + (s.op === 'F' || s.op === 'B' || s.op === 'S' ? String(s.v) : '')).join(' ');
+  // คำสั่งเคลื่อนที่: F30 เดินหน้า 30 ซม. | B20 ถอยหลัง 20 ซม. | L เลี้ยวซ้าย 90° | R เลี้ยวขวา 90° | U กลับหลัง 180°
+  //                  S50 ความเร็ว 50 | Z เริ่มนับระยะที่วิ่งใหม่
+  // คำสั่งควบคุม (สร้างจากบล็อกวนซ้ำ ไม่ต้องพิมพ์เอง):
+  //   P4 = เริ่มนับรอบ 4 รอบ | Q9 = ถ้านับครบแล้วกระโดดไปคำสั่งที่ 9 ไม่งั้นนับลด 1 | J1 = กระโดดไปคำสั่งที่ 1
+  //   Yd<60@7 = ถ้าเงื่อนไข "ระยะที่วิ่ง < 60" ไม่จริง กระโดดไปคำสั่งที่ 7   (d = ระยะที่วิ่ง ปัดเป็นซม.เต็ม)
+  const MAX_CODE = 200, MAX_NEST = 8, MAX_REPEAT = 999;
+  const CMP = ['>=', '<=', '!=', '=', '<', '>'];   // ตัวยาวก่อน เพื่ออ่าน >= ไม่ให้กลายเป็น >
+  const NEG = { '=': '!=', '!=': '=', '<': '>=', '>=': '<', '>': '<=', '<=': '>' };
+  const num = (x) => String(Math.round(x * 10) / 10);
+  const opnd = (o) => (o.dist ? 'd' : num(o.num));
+  function tok(s) {
+    if (s.op === 'F' || s.op === 'B' || s.op === 'S' || s.op === 'P') return s.op + s.v;
+    if (s.op === 'J' || s.op === 'Q') return s.op + s.t;
+    if (s.op === 'Y') return 'Y' + opnd(s.c.a) + s.c.op + opnd(s.c.b) + '@' + s.t;
+    return s.op;
   }
-  function parse(text) {
+  function toText(code) { return code.map(tok).join(' '); }
+  function compare(op, a, b) {
+    switch (op) {
+      case '=': return a === b; case '!=': return a !== b; case '<': return a < b;
+      case '<=': return a <= b; case '>': return a > b; default: return a >= b;
+    }
+  }
+
+  // อ่านข้อความโปรแกรม: simple = true รับเฉพาะคำสั่งเคลื่อนที่ (ใช้ตอนพิมพ์/วางเพื่อสร้างบล็อก)
+  function readTokens(text, simple) {
     const out = [];
-    for (const tok of String(text).trim().split(/\s+/).filter(Boolean)) {
-      const m = /^([FBSLRU])(\d+)?$/.exec(tok.toUpperCase());
-      if (!m) throw new Error('ไม่รู้จักคำสั่ง "' + tok + '"');
-      const op = m[1], v = m[2] === undefined ? null : Number(m[2]);
-      if ('FBS'.includes(op)) {
-        if (v === null) throw new Error('คำสั่ง ' + op + ' ต้องมีตัวเลข เช่น ' + op + '30');
-        const lim = op === 'S' ? SPEED : DIST;
-        if (v < lim.min || v > lim.max) throw new Error(tok + ': ตัวเลขต้องอยู่ระหว่าง ' + lim.min + '–' + lim.max);
-        out.push({ op, v });
-      } else {
-        if (v !== null) throw new Error('คำสั่ง ' + op + ' ไม่ต้องมีตัวเลข');
-        out.push({ op });
+    const toks = String(text).trim().split(/\s+/).filter(Boolean);
+    for (const raw of toks) {
+      const tk = raw.toUpperCase();
+      let m = /^([FBSLRUZ])(\d+)?$/.exec(tk);
+      if (m) {
+        const op = m[1], v = m[2] === undefined ? null : Number(m[2]);
+        if ('FBS'.includes(op)) {
+          if (v === null) throw new Error('คำสั่ง ' + op + ' ต้องมีตัวเลข เช่น ' + op + '30');
+          const lim = op === 'S' ? SPEED : DIST;
+          if (v < lim.min || v > lim.max) throw new Error(raw + ': ตัวเลขต้องอยู่ระหว่าง ' + lim.min + '–' + lim.max);
+          out.push({ op, v });
+        } else {
+          if (v !== null) throw new Error('คำสั่ง ' + op + ' ไม่ต้องมีตัวเลข');
+          out.push({ op });
+        }
+        continue;
       }
+      if (simple && /^[JPQY]/.test(tk)) throw new Error('"' + raw + '" เป็นคำสั่งวนซ้ำที่บล็อกสร้างให้ พิมพ์เองไม่ได้ ใช้ได้เฉพาะ F B L R U S Z');
+      if ((m = /^([JQ])(\d+)$/.exec(tk))) { out.push({ op: m[1], t: Number(m[2]) }); continue; }
+      if ((m = /^P(\d+)$/.exec(tk))) { out.push({ op: 'P', v: Number(m[1]) }); continue; }
+      if ((m = /^Y(D|-?\d+(?:\.\d+)?)(>=|<=|!=|=|<|>)(D|-?\d+(?:\.\d+)?)@(\d+)$/.exec(tk))) {
+        const o = (x) => (x === 'D' ? { dist: true } : { num: Number(x) });
+        out.push({ op: 'Y', c: { a: o(m[1]), op: m[2], b: o(m[3]) }, t: Number(m[4]) });
+        continue;
+      }
+      throw new Error('ไม่รู้จักคำสั่ง "' + raw + '"');
+    }
+    if (!simple) {
+      if (out.length > MAX_CODE) throw new Error('โปรแกรมยาวเกิน ' + MAX_CODE + ' คำสั่ง');
+      for (const s of out) if ((s.op === 'J' || s.op === 'Q' || s.op === 'Y') && s.t > out.length) throw new Error('คำสั่ง ' + tok(s) + ' กระโดดไปเกินท้ายโปรแกรม');
     }
     return out;
+  }
+  const parse = (text) => readTokens(text, true);        // F B L R U S Z เท่านั้น
+  const parseCode = (text) => readTokens(text, false);   // ทุกคำสั่ง (ที่ส่งให้หุ่น)
+
+  // ===================== แปลงบล็อกเป็นโปรแกรม =====================
+  // tree: [{ kind: 'move', op, v } | { kind: 'reset' } | { kind: 'repeat', n, body } |
+  //        { kind: 'loop', until, cond: { a, op, b }, body } | { kind: 'call', name }]  ทุกตัวมี id = id บล็อก
+  // funcs: { ชื่อ: { id, body } }   ฟังก์ชันถูกแทรกเข้าไปตรงที่เรียก (หุ่นไม่ต้องจำการเรียกกลับ)
+  // ผิดพลาด: โยน Error ภาษาไทย พร้อม blockId ให้หน้าเว็บชี้บล็อกที่ผิด
+  function blockError(id, msg) { const e = new Error(msg); e.blockId = id; return e; }
+  function compile(tree, funcs) {
+    funcs = funcs || {};
+    const code = [], src = [];
+    const emit = (ins, id) => {
+      if (code.length >= MAX_CODE) throw blockError(id, 'โปรแกรมยาวเกิน ' + MAX_CODE + ' คำสั่ง (นับรวมฟังก์ชันที่ถูกเรียกทุกครั้ง) ลองใช้วนซ้ำแทนการต่อบล็อกยาวๆ');
+      code.push(ins); src.push(id); return code.length - 1;
+    };
+    const constant = (o) => !o.dist;
+    function list(nodes, calls, nest) { for (const n of nodes) one(n, calls, nest); }
+    function one(n, calls, nest) {
+      if (n.kind === 'move') emit({ op: n.op, v: n.v }, n.id);
+      else if (n.kind === 'reset') emit({ op: 'Z' }, n.id);
+      else if (n.kind === 'repeat') {
+        if (!Number.isInteger(n.n) || n.n < 0 || n.n > MAX_REPEAT) throw blockError(n.id, 'จำนวนรอบต้องเป็นจำนวนเต็ม 0–' + MAX_REPEAT);
+        if (nest >= MAX_NEST) throw blockError(n.id, 'ทำซ้ำซ้อนกันได้ไม่เกิน ' + MAX_NEST + ' ชั้น');
+        emit({ op: 'P', v: n.n }, n.id);
+        const head = emit({ op: 'Q', t: -1 }, n.id);
+        list(n.body, calls, nest + 1);
+        emit({ op: 'J', t: head }, n.id);
+        code[head].t = code.length;
+      } else if (n.kind === 'loop') {
+        let c = n.cond;
+        if (n.until) c = { a: c.a, op: NEG[c.op], b: c.b };   // ทำซ้ำจนกว่า X = ทำซ้ำขณะที่ ไม่ X
+        const head = code.length;
+        if (constant(c.a) && constant(c.b)) {
+          // เงื่อนไขตัวเลขล้วน รู้ผลตั้งแต่ตอนนี้: จริง = วนตลอดไป, ไม่จริง = ไม่ทำเลย
+          if (!compare(c.op, c.a.num, c.b.num)) return;
+          list(n.body, calls, nest);
+          emit({ op: 'J', t: head }, n.id);
+          return;
+        }
+        const y = emit({ op: 'Y', c, t: -1 }, n.id);
+        list(n.body, calls, nest);
+        emit({ op: 'J', t: head }, n.id);
+        code[y].t = code.length;
+      } else if (n.kind === 'call') {
+        const f = funcs[n.name];
+        if (!f) throw blockError(n.id, 'ไม่มีฟังก์ชันชื่อ “' + n.name + '”');
+        if (calls.includes(n.name)) throw blockError(n.id, 'ฟังก์ชัน “' + n.name + '” เรียกตัวเองซ้ำไม่ได้ (หุ่นจะวนไม่จบ)');
+        list(f.body, calls.concat(n.name), nest);
+      } else throw blockError(n.id, 'บล็อกนี้ใช้กับหุ่นไม่ได้');
+    }
+    list(tree, [], 0);
+    return { code, src, text: toText(code) };
   }
 
   // ===================== เรขาคณิต =====================
@@ -218,22 +310,49 @@
     S.robot.h = ((Math.round(S.robot.h) % 360) + 360) % 360;
   }
 
-  // รันทั้งโปรแกรม คืนเฟรมสำหรับแอนิเมชัน เหตุการณ์ และคะแนน
-  function run(steps) {
+  // รันทั้งโปรแกรม (ชุดคำสั่งเดียวกับที่หุ่นรัน) คืนเฟรมสำหรับแอนิเมชัน เหตุการณ์ และคะแนน
+  const LIMIT = { seconds: 180, ops: 20000 };   // กันวนซ้ำไม่จบ
+  function run(code, opts) {
+    const trace = opts && opts.trace;   // ใช้ทดสอบ: ลำดับคำสั่งเคลื่อนที่ที่ทำจริง
     const S = newSim();
     frame(S);
     log(S, 'info', 'เริ่มที่ช่อง 1 หันหน้าไปทางช่อง 8');
-    for (const [i, s] of steps.entries()) {
-      if (S.ended) break;
-      S.step = i;
-      if (s.op === 'F') straight(S, s.v);
-      else if (s.op === 'B') straight(S, -s.v);
+    let pc = 0, ops = 0, odo = 0;
+    const counters = [];
+    while (pc < code.length && !S.ended) {
+      if (++ops > LIMIT.ops) {
+        S.ended = true; S.endReason = 'loop';
+        log(S, 'end', 'หยุดจำลอง: วนซ้ำเกิน ' + LIMIT.ops.toLocaleString() + ' ครั้งโดยหุ่นไม่ขยับ ตรวจเงื่อนไขของบล็อกทำซ้ำ (ระยะที่วิ่งไม่เพิ่มถ้าไม่มีเดินหน้า/ถอยหลังข้างใน)');
+        break;
+      }
+      if (S.t > LIMIT.seconds) {
+        S.ended = true; S.endReason = 'time';
+        log(S, 'end', 'หยุดจำลองที่ ' + LIMIT.seconds / 60 + ' นาที (โปรแกรมอาจวนซ้ำไม่จบ)');
+        break;
+      }
+      const s = code[pc];
+      S.step = pc;
+      let next = pc + 1;
+      if (trace && 'FBLRU'.includes(s.op)) trace.push(pc);
+      if (s.op === 'F' || s.op === 'B') { straight(S, s.op === 'F' ? s.v : -s.v); odo += s.v; }
       else if (s.op === 'L') turn(S, -90);
       else if (s.op === 'R') turn(S, 90);
       else if (s.op === 'U') turn(S, 180);
       else if (s.op === 'S') { S.speed = s.v; log(S, 'info', 'ตั้งความเร็วเป็น ' + s.v); }
-      frame(S);   // จบคำสั่งนี้ (กันเวลาค้างตอนเบรกให้แอนิเมชันเห็น)
+      else if (s.op === 'Z') { odo = 0; log(S, 'info', 'เริ่มนับระยะที่วิ่งใหม่ = 0'); }
+      else if (s.op === 'J') next = s.t;
+      else if (s.op === 'P') counters.push(s.v);
+      else if (s.op === 'Q') {
+        if (!counters.length || counters[counters.length - 1] <= 0) { counters.pop(); next = s.t; }
+        else counters[counters.length - 1]--;
+      } else if (s.op === 'Y') {
+        const d = Math.round(odo), val = (o) => (o.dist ? d : o.num);
+        if (!compare(s.c.op, val(s.c.a), val(s.c.b))) next = s.t;
+      }
+      if ('FBLRUS'.includes(s.op)) frame(S);   // จบคำสั่งนี้ (กันเวลาค้างตอนเบรกให้แอนิเมชันเห็น)
+      pc = next;
     }
+    S.odo = odo;
     if (!S.ended) log(S, 'end', 'จบโปรแกรม');
     const R = score(S);
     if (R.bonus) log(S, 'bonus', 'ไปครบทุกช่องและดันกระป๋องครบ โบนัส +' + POINTS.bonus, POINTS.bonus);
@@ -256,8 +375,11 @@
       touches: S.touches, time: +S.t.toFixed(1), fell: S.endReason === 'fell',
       total: rows.reduce((a, r) => a + r.points, 0), full: FULL, rows,
       cans: S.cans.map((k) => ({ zone: k.zone, out: k.out })),
+      odo: Math.round(S.odo || 0), robot: { x: +S.robot.x.toFixed(1), y: +S.robot.y.toFixed(1), h: S.robot.h },
+      endReason: S.endReason || null,
     };
   }
 
-  return { POINTS, CANS, ZONES, FULL, FIELD, ROBOT, CAN_R, START, SPEED, DIST, TIME, parse, toText, run, corners, robotHitsRect };
+  return { POINTS, CANS, ZONES, FULL, FIELD, ROBOT, CAN_R, START, SPEED, DIST, TIME, MAX_CODE, MAX_NEST, MAX_REPEAT, LIMIT,
+    parse, parseCode, toText, compile, run, corners, robotHitsRect };
 });

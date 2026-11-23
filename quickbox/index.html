@@ -63,7 +63,9 @@
     .rb.run.running svg { animation: none; }
   }
 
-  .layout { display: grid; grid-template-columns: minmax(0, 1fr) minmax(340px, 520px); gap: 16px; padding: 0 20px 24px; align-items: start; }
+  /* พื้นที่ต่อบล็อกใหญ่ ตัวจำลองเล็กอยู่ขวา กด "ขยาย" แล้วตัวจำลองกว้างขึ้น */
+  .layout { --strip: 0px; display: grid; grid-template-columns: minmax(0, 1fr) 300px; gap: 16px; padding: 0 20px 24px; align-items: start; }
+  body.sim-open .layout { grid-template-columns: minmax(0, 1fr) minmax(420px, 44vw); }
   .editor { position: sticky; top: calc(var(--hdr, 72px) + 12px); height: calc(100vh - var(--hdr, 72px) - 26px); min-height: 440px; display: flex; flex-direction: column;
             background: var(--panel); border-radius: 14px; overflow: hidden; box-shadow: 0 1px 0 var(--rule); }
   #blockly { flex: 1; min-height: 0; }
@@ -77,9 +79,23 @@
   #textPanel .row { margin-top: 8px; }
   #textErr { color: var(--red); font-size: 14px; }
 
-  .arena { display: flex; flex-direction: column; gap: 12px; min-width: 0; }
-  .fieldwrap { background: var(--panel); border-radius: 14px; padding: 8px; box-shadow: 0 1px 0 var(--rule); }
-  #field { display: block; width: 100%; aspect-ratio: 1 / 1; }
+  .arena { position: sticky; top: calc(var(--hdr, 72px) + 12px); max-height: calc(100vh - var(--hdr, 72px) - 26px); overflow: auto;
+           display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+  .simcard { background: var(--panel); border-radius: 14px; padding: 10px 10px 12px; box-shadow: 0 1px 0 var(--rule); }
+  .arena-head { display: flex; align-items: center; gap: 10px; margin: 0 2px 8px; }
+  .arena-head h2 { margin: 0; font: 600 17px/1.2 var(--display); }
+  .mini-score { margin-left: auto; font: 500 15px var(--display); color: var(--ink-2); font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .mini-score b { color: var(--ink); font-size: 20px; }
+  .btn.expand { background: var(--ink); color: #fff; box-shadow: none; }
+  .btn.expand:hover { background: #24375c; }
+  .fieldwrap { cursor: zoom-in; }
+  body.sim-open .fieldwrap { cursor: default; }
+  #field { display: block; width: 100%; aspect-ratio: 1 / 1; border-radius: 8px; }
+  .mini-hint { margin: 8px 2px 0; font-size: 13.5px; color: var(--ink-2); }
+  body.sim-open .mini-hint, body:not(.sim-open) .sim-full { display: none; }
+  .sim-full { display: flex; flex-direction: column; gap: 12px; }
+  .warn.err { background: #fde3e6; color: #8f1424; }
+  .blocklyTreeLabel { font-family: var(--body) !important; font-weight: 600; }
 
   .row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
   .btn { border: 0; border-radius: 10px; padding: 9px 14px; background: #fff; box-shadow: inset 0 0 0 1.5px var(--rule); cursor: pointer; font-weight: 600; font-size: 15px; }
@@ -136,7 +152,23 @@
   #log .empty { display: block; color: var(--ink-2); }
 
   @media (max-width: 900px) {
-    .layout { grid-template-columns: 1fr; padding: 0 10px 20px; }
+    /* มือถือ: บล็อกเต็มจอ ตัวจำลองเป็นแถบเล็กด้านล่าง กดขยายแล้วเต็มจอ */
+    .layout, body.sim-open .layout { --strip: 74px; grid-template-columns: 1fr; padding: 0 10px calc(var(--strip) + 14px); }
+    .arena { position: fixed; left: 0; right: 0; bottom: 0; top: auto; z-index: 40; max-height: none; overflow: visible;
+             padding: 8px 10px calc(8px + env(safe-area-inset-bottom)); background: var(--panel); box-shadow: 0 -6px 18px rgba(19,35,63,.12); }
+    body:not(.sim-open) .simcard { display: grid; grid-template-columns: 56px 1fr; align-items: center; gap: 12px; padding: 0; box-shadow: none; }
+    body:not(.sim-open) .fieldwrap { grid-column: 1; grid-row: 1; }
+    body:not(.sim-open) .arena-head { grid-column: 2; grid-row: 1; margin: 0; }
+    body:not(.sim-open) #field { border-radius: 6px; }
+    .mini-hint { display: none; }
+    .controls .btn { padding: 8px 11px; font-size: 14px; }
+    .controls .btn.go { padding: 8px 14px; }
+    .controls .spacer { display: none; }
+    .seg button { padding: 7px 9px; }
+    .blocklyTreeRow { padding-right: 6px !important; margin-bottom: 2px; }
+    .blocklyTreeLabel { font-size: 13px; }
+    body.sim-open { overflow: hidden; }
+    body.sim-open .arena { top: 0; z-index: 90; overflow: auto; background: var(--board); padding: 10px 10px calc(16px + env(safe-area-inset-bottom)); box-shadow: none; }
     .topbar { display: grid; grid-template-columns: 1fr; gap: 8px; padding: 8px 10px 9px; margin-bottom: 10px; }
     .brand { display: flex; align-items: baseline; gap: 10px; }
     .brand h1 { font-size: 21px; }
@@ -147,11 +179,12 @@
     .rb.run { font-size: 15px; padding: 4px 4px 6px; }
     .rb.run svg { width: 30px; height: 30px; }
     .status { order: 3; font-size: 13px; }
-    .editor { position: static; height: 62vh; min-height: 380px; }
+    .editor { position: static; height: calc(100vh - var(--hdr, 135px) - var(--strip) - 26px); height: calc(100dvh - var(--hdr, 135px) - var(--strip) - 26px); min-height: 330px; }
     .total { font-size: 54px; }
   }
 </style>
 <script src="vendor/blockly_compressed.js"></script>
+<script src="vendor/blocks_compressed.js"></script>
 <script src="vendor/blockly_th.js"></script>
 <script src="quickbox-engine.js"></script>
 </head>
@@ -180,7 +213,7 @@
       <button class="btn small" id="textToggle" aria-expanded="false" aria-controls="textPanel">แก้เป็นตัวอักษร</button>
     </div>
     <div id="textPanel" hidden>
-      <label for="textIn">F = เดินหน้า (ซม.) · B = ถอยหลัง (ซม.) · L = เลี้ยวซ้าย · R = เลี้ยวขวา · U = กลับหลัง · S = ความเร็ว 15–80</label>
+      <label for="textIn">F = เดินหน้า (ซม.) · B = ถอยหลัง (ซม.) · L = เลี้ยวซ้าย · R = เลี้ยวขวา · U = กลับหลัง · S = ความเร็ว 15–80 · Z = เริ่มนับระยะใหม่ (สร้างบล็อกได้เฉพาะคำสั่งพวกนี้ ส่วน P Q J Y มาจากบล็อกทำซ้ำ)</label>
       <textarea id="textIn" spellcheck="false" placeholder="เช่น F33 R F30 R F32"></textarea>
       <div class="row">
         <button class="btn small" id="textApply">สร้างบล็อกจากข้อความ</button>
@@ -190,8 +223,18 @@
     </div>
   </section>
 
-  <section class="arena" aria-label="สนามและคะแนน">
-    <div class="fieldwrap"><canvas id="field" role="img" aria-label="สนาม Quick Dun Dun ขนาด 120 x 120 ซม."></canvas></div>
+  <section class="arena" id="arena" aria-label="จำลองการวิ่ง">
+    <div class="simcard">
+      <div class="arena-head">
+        <h2>จำลองการวิ่ง</h2>
+        <span class="mini-score"><b id="miniTotal">0</b>/200</span>
+        <button class="btn small expand" id="simToggle" aria-expanded="false" aria-controls="simFull">ขยาย</button>
+      </div>
+      <div class="fieldwrap" id="fieldwrap"><canvas id="field" role="img" aria-label="สนาม Quick Dun Dun ขนาด 120 x 120 ซม."></canvas></div>
+      <p class="mini-hint">กด “ขยาย” เพื่อจำลองการวิ่งและดูคะแนน</p>
+    </div>
+
+    <div class="sim-full" id="simFull">
 
     <div class="row controls">
       <button class="btn go" id="run">▶ จำลอง</button>
@@ -229,6 +272,7 @@
       <h2 id="logTitle">เกิดอะไรขึ้นบ้าง</h2>
       <ol id="log"><li class="empty">กด “จำลอง” เพื่อดูหุ่นวิ่งและคะแนนทีละขั้น</li></ol>
     </section>
+    </div>
   </section>
 </main>
 
@@ -236,13 +280,27 @@
 'use strict';
 const $ = (id) => document.getElementById(id);
 const STORE = 'qb-blocks-v1';
-const MAX_STEPS = 120;
-
-// ===================== บล็อก 6 แบบ + บล็อกเริ่ม =====================
+// ===================== บล็อก =====================
+// คำภาษาไทยของบล็อกในตัว ให้อ่านง่ายสำหรับนักเรียน
+Object.assign(Blockly.Msg, {
+  PROCEDURES_DEFNORETURN_TITLE: 'ฟังก์ชัน', PROCEDURES_DEFNORETURN_PROCEDURE: 'ดันกระป๋อง',
+  PROCEDURES_DEFNORETURN_TOOLTIP: 'ตั้งชื่อชุดคำสั่ง แล้วใช้บล็อกเรียกฟังก์ชันกี่ครั้งก็ได้',
+  CONTROLS_WHILEUNTIL_OPERATOR_UNTIL: 'ทำซ้ำจนกว่า',
+});
+// ฟังก์ชันของกิจกรรมนี้ไม่มีตัวแปรรับค่า: เอาปุ่มเฟือง (เพิ่มตัวแปร) ออก
+{
+  const def = Blockly.Blocks.procedures_defnoreturn, init = def.init;
+  def.init = function () {
+    init.call(this);
+    const Mut = Blockly.icons && Blockly.icons.MutatorIcon;
+    if (Mut && this.hasIcon && this.hasIcon(Mut.TYPE)) this.removeIcon(Mut.TYPE);
+    this.setCommentText(null);   // ไม่ใส่ป้ายอธิบาย (?) ให้รก
+  };
+}
 const OPS = {
   qb_forward: { op: 'F', field: 'CM' }, qb_back: { op: 'B', field: 'CM' },
   qb_left: { op: 'L' }, qb_right: { op: 'R' }, qb_uturn: { op: 'U' },
-  qb_speed: { op: 'S', field: 'SPEED' },
+  qb_speed: { op: 'S', field: 'SPEED' }, qb_dist_reset: { op: 'Z' },
 };
 const TYPE_OF = Object.fromEntries(Object.entries(OPS).map(([type, o]) => [o.op, type]));
 const cm = (value) => ({ type: 'field_number', name: 'CM', value, min: QB.DIST.min, max: QB.DIST.max, precision: 1 });
@@ -260,6 +318,10 @@ Blockly.defineBlocksWithJsonArray([
   { type: 'qb_speed', message0: 'ตั้งความเร็ว %1', ...step, style: 'qb_speed',
     args0: [{ type: 'field_number', name: 'SPEED', value: QB.SPEED.def, min: QB.SPEED.min, max: QB.SPEED.max, precision: 1 }],
     tooltip: 'ความเร็วของการเดินหน้า/ถอยหลังที่ตามมา (' + QB.SPEED.min + '–' + QB.SPEED.max + ', เริ่มต้น ' + QB.SPEED.def + ')' },
+  { type: 'qb_dist', message0: 'ระยะที่วิ่ง (ซม.)', output: 'Number', style: 'qb_dist',
+    tooltip: 'หุ่นวิ่งไปแล้วกี่ ซม. นับทั้งเดินหน้าและถอยหลัง ปัดเป็นซม.เต็ม (เลี้ยวไม่นับ) ใช้ ≥ หรือ ≤ ดีกว่า = เพราะหุ่นจริงอาจเกินไป 1–2 ซม.' },
+  { type: 'qb_dist_reset', message0: 'เริ่มนับระยะที่วิ่งใหม่', ...step, style: 'qb_dist',
+    tooltip: 'ตั้ง “ระยะที่วิ่ง” กลับเป็น 0 (ตอนเริ่มโปรแกรมเป็น 0 อยู่แล้ว)' },
 ]);
 const theme = Blockly.Theme.defineTheme('quickbox', {
   base: Blockly.Themes.Classic,
@@ -268,15 +330,54 @@ const theme = Blockly.Theme.defineTheme('quickbox', {
     qb_move: { colourPrimary: '#2e9e4f' },
     qb_turn: { colourPrimary: '#1f5fd6' },
     qb_speed: { colourPrimary: '#d9731a' },
+    qb_dist: { colourPrimary: '#0b97a5' },
+    loop_blocks: { colourPrimary: '#8a4fe0' },
+    logic_blocks: { colourPrimary: '#56789e' },
+    math_blocks: { colourPrimary: '#56789e' },
+    procedure_blocks: { colourPrimary: '#d64570' },
   },
-  componentStyles: { workspaceBackgroundColour: '#f6f8fb', flyoutBackgroundColour: '#e8edf3', flyoutOpacity: 1, scrollbarColour: '#b7c2d0' },
+  categoryStyles: {
+    qb_move_cat: { colour: '#2e9e4f' }, qb_loop_cat: { colour: '#8a4fe0' }, qb_dist_cat: { colour: '#0b97a5' },
+    qb_logic_cat: { colour: '#56789e' }, qb_func_cat: { colour: '#d64570' },
+  },
+  componentStyles: { workspaceBackgroundColour: '#f6f8fb', toolboxBackgroundColour: '#eef2f7', flyoutBackgroundColour: '#e4e9f0',
+    flyoutOpacity: 1, scrollbarColour: '#b7c2d0' },
   fontStyle: { family: "'IBM Plex Sans Thai', system-ui, sans-serif", weight: '600', size: 13 },
 });
+const numShadow = (n) => ({ shadow: { type: 'math_number', fields: { NUM: n } } });
+const distCompare = (op, n) => ({ kind: 'block', type: 'logic_compare', fields: { OP: op }, inputs: { A: { block: { type: 'qb_dist' } }, B: numShadow(n) } });
+const TOOLBOX = { kind: 'categoryToolbox', contents: [
+  { kind: 'category', name: 'เคลื่อนที่', categorystyle: 'qb_move_cat', contents:
+    ['qb_forward', 'qb_back', 'qb_left', 'qb_right', 'qb_uturn', 'qb_speed'].map((type) => ({ kind: 'block', type })) },
+  { kind: 'category', name: 'ทำซ้ำ', categorystyle: 'qb_loop_cat', contents: [
+    { kind: 'block', type: 'controls_repeat_ext', inputs: { TIMES: numShadow(4) } },
+    { kind: 'block', type: 'controls_whileUntil', fields: { MODE: 'UNTIL' }, inputs: { BOOL: { block: distCompare('GTE', 60) } } },
+    { kind: 'block', type: 'controls_whileUntil', fields: { MODE: 'WHILE' }, inputs: { BOOL: { block: distCompare('LT', 60) } } },
+  ] },
+  { kind: 'category', name: 'ระยะทาง', categorystyle: 'qb_dist_cat', contents: [
+    { kind: 'block', type: 'qb_dist' }, { kind: 'block', type: 'qb_dist_reset' },
+  ] },
+  { kind: 'category', name: 'เปรียบเทียบ', categorystyle: 'qb_logic_cat', contents: [
+    ...['EQ', 'LT', 'GT', 'LTE', 'GTE'].map((op) => ({ kind: 'block', type: 'logic_compare', fields: { OP: op }, inputs: { A: numShadow(0), B: numShadow(0) } })),
+    { kind: 'block', type: 'math_number', fields: { NUM: 10 } },
+  ] },
+  { kind: 'category', name: 'ฟังก์ชัน', categorystyle: 'qb_func_cat', custom: 'QB_FUNCS' },
+] };
+// ตัด kind ออกจากบล็อกที่ซ้อนอยู่ในช่องของบล็อกอื่น
+for (const c of TOOLBOX.contents) for (const b of c.contents || []) if (b.inputs && b.inputs.BOOL) delete b.inputs.BOOL.block.kind;
 const ws = Blockly.inject('blockly', {
-  toolbox: { kind: 'flyoutToolbox', contents: Object.keys(OPS).map((type) => ({ kind: 'block', type })) },
+  toolbox: TOOLBOX,
   theme, renderer: 'zelos', trashcan: true, sounds: false, media: 'vendor/media/',
   move: { scrollbars: true, drag: true, wheel: false },
   zoom: { controls: true, wheel: true, startScale: window.innerWidth < 600 ? 0.68 : 0.85, maxScale: 1.6, minScale: 0.5 },
+});
+ws.registerToolboxCategoryCallback('QB_FUNCS', (w) => {
+  const items = [{ kind: 'label', text: 'สร้างฟังก์ชัน แล้วต่อบล็อกข้างใน' },
+    { kind: 'block', type: 'procedures_defnoreturn', fields: { NAME: Blockly.Msg.PROCEDURES_DEFNORETURN_PROCEDURE } }];
+  const names = w.getBlocksByType('procedures_defnoreturn', false).map((d) => d.getFieldValue('NAME'));
+  if (names.length) items.push({ kind: 'label', text: 'เรียกใช้ฟังก์ชัน' });
+  for (const name of names) items.push({ kind: 'block', type: 'procedures_callnoreturn', extraState: { name } });
+  return items;
 });
 
 function chainState(steps) {
@@ -314,33 +415,85 @@ function ensureOneStart() {
   }
   starts.forEach((b, i) => { if (i === 0) b.setDeletable(false); else b.dispose(true); });
 }
+
+// ===================== บล็อก → โปรแกรม =====================
+const CMP = { EQ: '=', NEQ: '!=', LT: '<', LTE: '<=', GT: '>', GTE: '>=' };
+function blockErr(b, msg) { const e = new Error(msg); e.blockId = b.id; return e; }
+function stmtList(b) {
+  const out = [];
+  for (; b; b = b.getNextBlock()) if (b.isEnabled()) out.push(stmt(b));
+  return out;
+}
+function operand(b, owner) {
+  if (!b) throw blockErr(owner, 'ใส่ตัวเลขหรือ “ระยะที่วิ่ง” ในช่องเปรียบเทียบให้ครบทั้งสองช่อง');
+  if (b.type === 'math_number') return { num: Number(b.getFieldValue('NUM')) };
+  if (b.type === 'qb_dist') return { dist: true };
+  throw blockErr(b, 'ช่องเปรียบเทียบใส่ได้เฉพาะตัวเลขหรือ “ระยะที่วิ่ง”');
+}
+function stmt(b) {
+  const o = OPS[b.type];
+  if (o) return o.op === 'Z' ? { kind: 'reset', id: b.id } : { kind: 'move', op: o.op, v: o.field ? Number(b.getFieldValue(o.field)) : undefined, id: b.id };
+  if (b.type === 'controls_repeat_ext' || b.type === 'controls_repeat') {
+    let n;
+    if (b.type === 'controls_repeat') n = Number(b.getFieldValue('TIMES'));
+    else {
+      const k = b.getInputTargetBlock('TIMES');
+      if (!k || k.type !== 'math_number') throw blockErr(b, 'ช่องจำนวนรอบของ “ทำซ้ำ” ใส่ได้เฉพาะตัวเลข');
+      n = Number(k.getFieldValue('NUM'));
+    }
+    return { kind: 'repeat', n, id: b.id, body: stmtList(b.getInputTargetBlock('DO')) };
+  }
+  if (b.type === 'controls_whileUntil') {
+    const c = b.getInputTargetBlock('BOOL');
+    if (!c) throw blockErr(b, 'ใส่บล็อกเปรียบเทียบ เช่น “ระยะที่วิ่ง ≥ 60” ในช่องของ “' + (b.getFieldValue('MODE') === 'UNTIL' ? 'ทำซ้ำจนกว่า' : 'ทำซ้ำขณะที่') + '”');
+    if (c.type !== 'logic_compare') throw blockErr(c, 'ช่องเงื่อนไขใส่ได้เฉพาะบล็อกเปรียบเทียบ (= ≠ < ≤ > ≥)');
+    const cond = { a: operand(c.getInputTargetBlock('A'), c), op: CMP[c.getFieldValue('OP')], b: operand(c.getInputTargetBlock('B'), c) };
+    return { kind: 'loop', until: b.getFieldValue('MODE') === 'UNTIL', cond, id: b.id, body: stmtList(b.getInputTargetBlock('DO')) };
+  }
+  if (b.type === 'procedures_callnoreturn') return { kind: 'call', name: b.getFieldValue('NAME'), id: b.id };
+  throw blockErr(b, 'บล็อกนี้ใช้ในโปรแกรมหุ่นไม่ได้');
+}
 function readProgram() {
   const start = ws.getBlocksByType('qb_start', false)[0];
-  const steps = [], ids = [];
-  for (let b = start && start.getNextBlock(); b; b = b.getNextBlock()) {
-    const o = OPS[b.type];
-    if (!o) continue;
-    steps.push({ op: o.op, v: o.field ? Number(b.getFieldValue(o.field)) : null });
-    ids.push(b.id);
+  const orphans = ws.getTopBlocks(false).filter((t) => t.type !== 'qb_start' && t.type !== 'procedures_defnoreturn')
+    .reduce((n, t) => n + t.getDescendants(false).filter((d) => !d.isShadow()).length, 0);
+  try {
+    const funcs = {};
+    for (const d of ws.getBlocksByType('procedures_defnoreturn', false)) {
+      if (d.getVars && d.getVars().length) throw blockErr(d, 'ฟังก์ชันในกิจกรรมนี้รับตัวแปรไม่ได้ ลบตัวแปรออกก่อน');
+      funcs[d.getFieldValue('NAME')] = { id: d.id, body: stmtList(d.getInputTargetBlock('STACK')) };
+    }
+    const c = QB.compile(stmtList(start && start.getNextBlock()), funcs);
+    return { code: c.code, src: c.src, text: c.text, orphans, error: null };
+  } catch (e) {
+    return { code: [], src: [], text: '', orphans, error: e };
   }
-  const orphans = ws.getTopBlocks(false).filter((t) => t.type !== 'qb_start')
-    .reduce((n, t) => n + t.getDescendants(false).length, 0);
-  return { steps, ids, orphans };
+}
+// ใส่ป้ายเตือนบนบล็อกที่ผิด
+let marked = null;
+function markBlock(id, msg) {
+  const old = marked && ws.getBlockById(marked);
+  if (old && marked !== id) old.setWarningText(null);
+  marked = id || null;
+  const b = id && ws.getBlockById(id);
+  if (b) b.setWarningText(msg);
 }
 
 // ===================== โปรแกรมเปลี่ยน =====================
-let prog = { steps: [], ids: [], orphans: 0 };
-let sentText = null;   // โปรแกรมที่อยู่ในหุ่นตอนนี้
+let prog = { code: [], src: [], text: '', orphans: 0, error: null };
+let sentText = null, sentSrc = [], sentCode = [];   // โปรแกรมที่อยู่ในหุ่นตอนนี้
+const canRun = () => !prog.error && prog.code.length > 0;
 function programChanged() {
   prog = readProgram();
-  const text = QB.toText(prog.steps);
-  $('progText').textContent = text || '(ยังไม่มีคำสั่ง)';
-  $('count').textContent = prog.steps.length + ' คำสั่ง';
+  $('progText').textContent = prog.error ? '(แก้บล็อกที่มีป้ายเตือนก่อน)' : prog.text || '(ยังไม่มีคำสั่ง)';
+  $('count').textContent = prog.code.length + ' คำสั่ง';
   const warn = [];
-  if (prog.orphans) warn.push('มีบล็อก ' + prog.orphans + ' ชิ้นที่ไม่ได้ต่อกับ “เมื่อเริ่ม” บล็อกพวกนี้จะไม่ทำงาน');
-  if (prog.steps.length > MAX_STEPS) warn.push('คำสั่งเกิน ' + MAX_STEPS + ' ขั้น หุ่นรับได้ไม่เกิน ' + MAX_STEPS + ' ขั้น');
+  if (prog.error) warn.push(prog.error.message);
+  if (prog.orphans) warn.push('มีบล็อก ' + prog.orphans + ' ชิ้นที่ไม่ได้ต่อกับ “เมื่อเริ่ม” หรือฟังก์ชัน บล็อกพวกนี้จะไม่ทำงาน');
   $('orphan').hidden = !warn.length; $('orphan').textContent = warn.join(' · ');
-  if (!$('textPanel').hidden && document.activeElement !== $('textIn')) $('textIn').value = text;
+  $('orphan').classList.toggle('err', !!prog.error);
+  markBlock(prog.error && prog.error.blockId, prog.error && prog.error.message);
+  if (!$('textPanel').hidden && document.activeElement !== $('textIn')) $('textIn').value = prog.text;
   try { localStorage.setItem(STORE, JSON.stringify(Blockly.serialization.workspaces.save(ws))); } catch (e) { /* โหมดส่วนตัว: ไม่จำ */ }
   stopPlayback(); showStart();
   updateRobotButtons();
@@ -428,7 +581,7 @@ function scoreAt(T) {
 }
 function renderScore(T, final) {
   const s = scoreAt(T);
-  $('total').textContent = s.total;
+  $('total').textContent = s.total; $('miniTotal').textContent = s.total;
   $('clock').textContent = (final && sim ? sim.result.time : Math.min(T, sim ? sim.result.time : 0)).toFixed(1);
   const order = [8, 7, 6, 5, 1, 2, 3, 4];
   $('tiles').innerHTML = order.map((n) => {
@@ -461,8 +614,9 @@ function highlight(id) { if (lit !== id) { ws.highlightBlock(id || null); lit = 
 function showStart() { sim = null; playT = 0; highlight(null); redraw(); renderScore(0, false); }
 function stopPlayback() { playing = false; }
 function startSim() {
-  if (!prog.steps.length) { flashNote('ยังไม่มีคำสั่ง ลากบล็อกจากแถบซ้ายมาต่อใต้ “เมื่อเริ่ม”'); return; }
-  sim = QB.run(prog.steps); sim.ids = prog.ids.slice();
+  if (prog.error) { flashNote('แก้บล็อกที่มีป้ายเตือนก่อน: ' + prog.error.message); return; }
+  if (!prog.code.length) { flashNote('ยังไม่มีคำสั่ง ลากบล็อกจากหมวดด้านซ้ายมาต่อใต้ “เมื่อเริ่ม”'); return; }
+  sim = QB.run(prog.code); sim.ids = prog.src.slice();
   playT = 0; playing = true; lastStamp = 0;
   requestAnimationFrame(tick);
 }
@@ -486,30 +640,43 @@ function finish() {
 function flashNote(msg) { const li = '<li class="end"><span class="t"></span><span class="m">' + msg + '</span><span class="p"></span></li>'; $('log').innerHTML = li; }
 
 $('run').onclick = startSim;
-$('skip').onclick = () => { if (!sim) { if (!prog.steps.length) return startSim(); sim = QB.run(prog.steps); sim.ids = prog.ids.slice(); } finish(); };
+$('skip').onclick = () => { if (!sim) { if (!canRun()) return startSim(); sim = QB.run(prog.code); sim.ids = prog.src.slice(); } finish(); };
 $('reset').onclick = () => { stopPlayback(); showStart(); };
 for (const b of document.querySelectorAll('.seg button')) b.onclick = () => {
   mult = Number(b.dataset.x);
   for (const o of document.querySelectorAll('.seg button')) o.setAttribute('aria-pressed', String(o === b));
 };
 
+// ===================== ย่อ/ขยายตัวจำลอง =====================
+const narrow = window.matchMedia('(max-width: 900px)');
+function setSimOpen(open) {
+  document.body.classList.toggle('sim-open', open);
+  $('simToggle').setAttribute('aria-expanded', String(open));
+  $('simToggle').textContent = open ? (narrow.matches ? 'กลับไปต่อบล็อก' : 'ย่อ') : 'ขยาย';
+  if (open && narrow.matches) $('arena').scrollTop = 0;
+}
+$('simToggle').onclick = () => setSimOpen(!document.body.classList.contains('sim-open'));
+$('fieldwrap').onclick = () => { if (!document.body.classList.contains('sim-open')) setSimOpen(true); };
+narrow.addEventListener('change', () => setSimOpen(document.body.classList.contains('sim-open')));
+document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && document.body.classList.contains('sim-open') && narrow.matches) setSimOpen(false); });
+
 // ===================== โปรแกรมแบบตัวอักษร =====================
 $('textToggle').onclick = () => {
   const open = $('textPanel').hidden;
   $('textPanel').hidden = !open; $('textToggle').setAttribute('aria-expanded', String(open));
-  if (open) { $('textIn').value = QB.toText(prog.steps); $('textErr').textContent = ''; $('textIn').focus(); }
+  if (open) { $('textIn').value = prog.text; $('textErr').textContent = ''; $('textIn').focus(); }
   Blockly.svgResize(ws);
 };
 $('textApply').onclick = () => {
   try {
     const steps = QB.parse($('textIn').value);
-    if (steps.length > MAX_STEPS) throw new Error('คำสั่งเกิน ' + MAX_STEPS + ' ขั้น');
+    if (steps.length > QB.MAX_CODE) throw new Error('คำสั่งเกิน ' + QB.MAX_CODE + ' ขั้น');
     $('textErr').textContent = '';
     loadState(chainState(steps));
   } catch (e) { $('textErr').textContent = e.message; }
 };
 $('textCopy').onclick = async () => {
-  const t = QB.toText(prog.steps);
+  const t = prog.text;
   try { await navigator.clipboard.writeText(t); $('textErr').textContent = 'คัดลอกแล้ว'; }
   catch (e) { $('textIn').select(); $('textErr').textContent = 'กด Ctrl+C เพื่อคัดลอก'; }
 };
@@ -524,8 +691,8 @@ let device = null, toRobot = null, online = false, busy = false, running = false
 const waiters = [];
 function btStatus(msg, kind) { $('btText').textContent = msg; $('btStatus').className = 'status' + (kind ? ' ' + kind : ''); }
 function updateRobotButtons() {
-  const fresh = sentText !== null && sentText === QB.toText(prog.steps);
-  $('btSend').disabled = !online || busy || running || !prog.steps.length || prog.steps.length > MAX_STEPS;
+  const fresh = sentText !== null && sentText === prog.text;
+  $('btSend').disabled = !online || busy || running || !canRun();
   $('btGo').disabled = !online || busy || running || sentText === null;
   $('btStop').disabled = !online;
   // วงแสงบอกว่าควรกดปุ่มไหนต่อ: เชื่อมต่อ → ส่งโค้ด → เริ่มวิ่ง
@@ -561,8 +728,8 @@ function fromRobot(raw) {
     tickRun(); clearInterval(runTimer); runTimer = setInterval(tickRun, 100);
   } else if (/^S\d+$/.test(text)) {
     const i = Number(text.slice(1));
-    if (sentText === QB.toText(prog.steps)) highlight(prog.ids[i]);
-    btStatus('หุ่นกำลังทำคำสั่งที่ ' + (i + 1) + (sentText ? '/' + QB.parse(sentText).length : ''), 'run');
+    if (sentText === prog.text) highlight(sentSrc[i]);
+    btStatus('หุ่นกำลังทำ: ' + (sentCode[i] ? describe(sentCode[i]) : 'คำสั่งที่ ' + (i + 1)), 'run');
   } else if (text.startsWith('DONE')) {
     endRun(); const sec = text.slice(4).trim();
     btStatus('หุ่นวิ่งจบ ใช้เวลา ' + sec + ' วินาที (เวลาจากหุ่น)', 'ok');
@@ -587,7 +754,7 @@ async function connect() {
     const listen = await service.getCharacteristic(FROM_ROBOT);
     await listen.startNotifications();
     listen.addEventListener('characteristicvaluechanged', (e) => fromRobot(new TextDecoder().decode(e.target.value)));
-    online = true; sentText = null;
+    online = true; sentText = null; sentCode = []; sentSrc = [];
     await ask('P', (t) => t === 'R');
     btStatus('เชื่อมต่อ ' + (device.name || 'หุ่น') + ' แล้ว กด “ส่งโค้ด” เพื่อส่งบล็อกไปหุ่น', 'linked');
   } catch (e) {
@@ -598,33 +765,37 @@ async function connect() {
   updateRobotButtons();
 }
 function lost() {
-  online = false; busy = false; sentText = null; endRun();
+  online = false; busy = false; sentText = null; sentCode = []; sentSrc = []; endRun();
   btStatus('หลุดการเชื่อมต่อ กด “เชื่อมต่อหุ่น” อีกครั้ง', 'err');
   updateRobotButtons();
 }
-function packLines(steps) {
+function describe(s) {
+  return { F: 'เดินหน้า ' + s.v + ' ซม.', B: 'ถอยหลัง ' + s.v + ' ซม.', L: 'เลี้ยวซ้าย 90°', R: 'เลี้ยวขวา 90°', U: 'กลับหลัง 180°',
+    S: 'ตั้งความเร็ว ' + s.v, Z: 'เริ่มนับระยะใหม่' }[s.op] || 'ตรวจเงื่อนไขทำซ้ำ';
+}
+function packLines(text) {
   const lines = []; let cur = '';
-  for (const tok of QB.toText(steps).split(' ')) {
+  for (const tok of text.split(' ')) {
     if (cur && ('+' + cur + ' ' + tok).length > 20) { lines.push(cur); cur = tok; } else cur = cur ? cur + ' ' + tok : tok;
   }
   if (cur) lines.push(cur);
   return lines;
 }
 async function sendProgram() {
-  const steps = prog.steps.slice(), text = QB.toText(steps);
+  const text = prog.text, code = prog.code.slice(), src = prog.src.slice();
   busy = true; updateRobotButtons();
   try {
     btStatus('กำลังส่งโค้ด…', 'linked');
     await ask('N', (t) => t === 'OK0');
     let n = 0;
-    for (const line of packLines(steps)) {
+    for (const line of packLines(text)) {
       n += line.split(' ').length;
       const want = 'OK' + n;
       await ask('+' + line, (t) => t === want || t.startsWith('ERR'));
     }
     const answer = await ask('E' + n, (t) => t.startsWith('READY') || t.startsWith('ERR'));
     if (answer !== 'READY' + n) throw new Error('หุ่นได้รับคำสั่งไม่ครบ (' + answer + ')');
-    sentText = text;
+    sentText = text; sentCode = code; sentSrc = src;
     btStatus('หุ่นได้รับ ' + n + ' คำสั่งแล้ว กด “เริ่มวิ่ง” หรือกดปุ่ม UP ที่หุ่น', 'ok');
   } catch (e) {
     sentText = null;
@@ -647,7 +818,12 @@ $('btStop').onclick = async () => { try { await write('X'); if (running) btStatu
   try { loadState(state); } catch (e) { loadState(chainState([{ op: 'F', v: 33 }])); }
   const setHdr = () => document.documentElement.style.setProperty('--hdr', $('topbar').offsetHeight + 'px');
   setHdr(); Blockly.svgResize(ws);
-  if (window.ResizeObserver) new ResizeObserver(() => { setHdr(); Blockly.svgResize(ws); }).observe($('topbar'));
+  if (window.ResizeObserver) {
+    new ResizeObserver(() => { setHdr(); Blockly.svgResize(ws); }).observe($('topbar'));
+    new ResizeObserver(() => Blockly.svgResize(ws)).observe($('blockly'));
+    let lastW = 0;
+    new ResizeObserver(() => { if (canvas.clientWidth !== lastW) { lastW = canvas.clientWidth; sizeCanvas(); } }).observe(canvas);
+  }
   sizeCanvas(); updateRobotButtons();
   window.addEventListener('resize', () => { sizeCanvas(); Blockly.svgResize(ws); });
   if (document.fonts) document.fonts.ready.then(() => { redraw(); });
