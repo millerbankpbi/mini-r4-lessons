@@ -89,7 +89,7 @@ assert '__DATA__' in t
 sys.path.insert(0, ROOT + '/src/install')
 import install_text, shutil
 inst = {'th': install_text.TH, 'en': install_text.EN, 'lo': install_text.LO}
-test_code = open(ROOT + '/src/install/test_mini_r4.ino', encoding='utf-8').read()
+test_code = open(ROOT + '/src/install/hello_matrix.ino', encoding='utf-8').read()   # = ตัวอย่าง สวัสดี MATRIX ในบท u1-oled
 t = t.replace('__INSTALL__', json.dumps(inst, ensure_ascii=False).replace('</', '<\\/'))
 t = t.replace('__INSTALL_TEST__', json.dumps(test_code))
 os.makedirs(ROOT + '/out/web/img', exist_ok=True)

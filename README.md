@@ -19,7 +19,7 @@
 
 - หน้าเว็บ: https://millerbankpbi.github.io/mini-r4-lessons/#install (มีทั้ง ไทย / English / ລາວ)
 - ขั้นตอนพร้อมรูป: ติดตั้ง Arduino IDE 2 → บอร์ด Arduino UNO R4 Boards (ทดสอบกับ 1.6.0) → ไลบรารี MatrixMiniR4 by KKITC 1.2.6 (กด INSTALL ALL เพื่อติดตั้ง ArduinoBLE และ PubSubClient ด้วย) → เลือกบอร์ด Arduino UNO R4 WiFi และพอร์ต → อัปโหลดโค้ดทดสอบ
-- มีหัวข้อแก้ปัญหาที่พบบ่อย · ข้อความอยู่ที่ `source/install/install_text.py` โค้ดทดสอบ `source/install/test_mini_r4.ino`
+- มีหัวข้อแก้ปัญหาที่พบบ่อย · ข้อความอยู่ที่ `source/install/install_text.py` โค้ดทดสอบ (ตัวอย่าง สวัสดี MATRIX) `source/install/hello_matrix.ino`
 
 ## หน่วยที่ 6 บังคับหุ่นผ่านมือถือ
 

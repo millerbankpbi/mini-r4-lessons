@@ -731,7 +731,7 @@ function installPage() {
   const v = $('#view');
   v.innerHTML = '<div class="crumb"><a href="#home">' + U('home') + '</a></div>' + U('installHtml').split('{IMG}').join(IMG_BASE);
   const slot = $('#testCode');
-  if (slot) slot.replaceWith(bridge({ code: INSTALL_TEST, codeOnly: true, ranges: {}, en: [] }, { file: 'test_mini_r4.ino' }));
+  if (slot) slot.replaceWith(bridge({ code: INSTALL_TEST, codeOnly: true, ranges: {}, en: [] }, { file: 'u1-oled-1.ino' }));
   v.appendChild(footer());
 }
 
