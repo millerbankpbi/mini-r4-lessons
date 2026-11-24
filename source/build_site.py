@@ -85,6 +85,16 @@ else:
 recs = [dict(kind='units', units=d['units'])] + [dict(kind='lesson', lesson=l) for l in d['lessons']] + [dict(kind='block', type=t, block=b) for t, b in d['blocks'].items()]
 t = open(ROOT + '/src/template.html', encoding='utf-8').read()
 assert '__DATA__' in t
+# หน้า "ติดตั้งโปรแกรม": ข้อความ 3 ภาษา + โค้ดทดสอบ (คอมไพล์ผ่านแล้ว) + รูปหน้าจอ
+sys.path.insert(0, ROOT + '/src/install')
+import install_text, shutil
+inst = {'th': install_text.TH, 'en': install_text.EN, 'lo': install_text.LO}
+test_code = open(ROOT + '/src/install/test_mini_r4.ino', encoding='utf-8').read()
+t = t.replace('__INSTALL__', json.dumps(inst, ensure_ascii=False).replace('</', '<\\/'))
+t = t.replace('__INSTALL_TEST__', json.dumps(test_code))
+os.makedirs(ROOT + '/out/web/img', exist_ok=True)
+for f in sorted(os.listdir(ROOT + '/src/install/img')):
+    shutil.copy(ROOT + '/src/install/img/' + f, ROOT + '/out/web/img/' + f)
 os.makedirs(ROOT + '/out/web', exist_ok=True)
 # hosted version: page + data.json (one record per line)
 open(ROOT + '/out/web/index.html', 'w', encoding='utf-8').write(t.replace('__DATA__', ''))

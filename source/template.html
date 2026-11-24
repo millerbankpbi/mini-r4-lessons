@@ -188,6 +188,14 @@ table.vt td code{white-space:pre-wrap;word-break:break-word}
 .ucard ol{margin:8px 0 0;padding-left:20px;font-size:14px}
 .steps{counter-reset:s;list-style:none;padding:0;display:grid;gap:10px}
 .steps>li{counter-increment:s;background:var(--paper);border:1px solid var(--line);border-radius:12px;padding:10px 16px 10px 56px;position:relative}
+figure.shot{margin:12px 0 4px}
+figure.shot img{display:block;width:100%;max-width:780px;height:auto;border-radius:10px;border:1px solid var(--line);background:#1b2124}
+ul.need{display:grid;gap:6px;padding-left:22px}
+dl.faq{display:grid;gap:8px;margin:8px 0 0}
+dl.faq dt{font-weight:600;background:var(--paper);border:1px solid var(--line);border-bottom:0;border-radius:10px 10px 0 0;padding:8px 12px 0}
+dl.faq dd{margin:0;background:var(--paper);border:1px solid var(--line);border-top:0;border-radius:0 0 10px 10px;padding:2px 12px 10px}
+p.next{margin-top:22px;font-size:17px}
+.steps>li .bridge{margin-top:12px}
 .steps>li::before{content:counter(s);position:absolute;left:14px;top:10px;width:28px;height:28px;border-radius:50%;background:var(--ink);color:#fff;display:grid;place-items:center;font-weight:700}
 .legend{display:flex;gap:16px;flex-wrap:wrap;font-size:14px;color:var(--muted);margin:8px 0}
 .legend span{display:flex;gap:6px;align-items:center}
@@ -215,6 +223,7 @@ const INLINE = document.getElementById('data').textContent.trim();
 const FRAMED = (() => { try { return window.self !== window.top; } catch (e) { return true; } })();
 // หน้าจอยบังคับหุ่น: เว็บจริงอยู่ที่ rc/ ข้างหน้านี้ ไฟล์ offline ไม่มีโฟลเดอร์ rc จึงลิงก์ไปเว็บจริง (Bluetooth จากเว็บใช้ได้เฉพาะ https)
 const RC_BASE = INLINE.startsWith('[') ? 'https://millerbankpbi.github.io/mini-r4-lessons/rc/' : 'rc/';
+const IMG_BASE = INLINE.startsWith('[') ? 'https://millerbankpbi.github.io/mini-r4-lessons/img/' : 'img/';
 const rcHref = preset => RC_BASE + '?' + (preset ? 'p=' + encodeURIComponent(preset) + '&' : '') + 'lang=' + SITE;
 function fromRecords(recs) {
   const d = { units: [], lessons: [], blocks: {} };
@@ -336,6 +345,10 @@ let SITE = (() => {
   const nav = (navigator.languages || [navigator.language || '']).map(x => String(x).slice(0, 2).toLowerCase());
   return nav.includes('lo') && !nav.includes('th') ? 'lo' : 'th';
 })();
+// หน้า "ติดตั้งโปรแกรม": ข้อความ 3 ภาษาและโค้ดทดสอบ ใส่ตอน build (src/install/)
+const INSTALL = __INSTALL__;
+const INSTALL_TEST = __INSTALL_TEST__;
+for (const k in INSTALL) Object.assign(I18N[k], INSTALL[k]);
 const U = k => I18N[SITE][k];
 // ข้อมูลหลักเป็นภาษาไทย คำแปลวางทับเฉพาะข้อความ (โค้ด บล็อก และลำดับคำตอบคงเดิม)
 let RAW = null;
@@ -539,7 +552,7 @@ function renderSide(active) {
   const s = $('#side');
   let h = '<a class="brand" href="#home"><svg width="38" height="38" viewBox="0 0 64 64" aria-hidden="true"><rect x="4" y="12" width="28" height="20" rx="5" fill="#00878F"/><rect x="32" y="32" width="28" height="20" rx="5" fill="#10282C"/><path d="M32 22h7v20" stroke="#FFC857" stroke-width="5" fill="none"/></svg><span><b>' + U('brand') + '</b><span>' + U('brandSub') + '</span></span></a>';
   h += '<div class="sitelang" role="group" aria-label="' + U('langGroup') + '">' + SITES.map(([k, n]) => '<button lang="' + k + '" data-site="' + k + '" aria-pressed="' + (k === SITE) + '">' + n + '</button>').join('') + '</div>';
-  h += '<div class="nav-top"><a class="navi' + (active === 'home' ? ' on' : '') + '" href="#home">' + U('home') + '</a><a class="navi' + (active === 'start' ? ' on' : '') + '" href="#start">' + U('start') + '</a><a class="navi' + (active === 'ref' ? ' on' : '') + '" href="#ref">' + U('ref') + '</a><a class="navi" href="' + esc(rcHref('')) + '">' + U('rcBuilder') + '</a></div>';
+  h += '<div class="nav-top"><a class="navi' + (active === 'home' ? ' on' : '') + '" href="#home">' + U('home') + '</a><a class="navi' + (active === 'install' ? ' on' : '') + '" href="#install">' + U('install') + '</a><a class="navi' + (active === 'start' ? ' on' : '') + '" href="#start">' + U('start') + '</a><a class="navi' + (active === 'ref' ? ' on' : '') + '" href="#ref">' + U('ref') + '</a><a class="navi" href="' + esc(rcHref('')) + '">' + U('rcBuilder') + '</a></div>';
   for (const u of D.units) {
     h += '<div class="unit-h" style="--u:' + u.color + '"><i></i>' + U('unit')(u.id) + ' ' + esc(u.title) + (u.soon ? '<small>' + U('soon') + '</small>' : '') + '</div>';
     for (const l of lessonsByUnit(u.id)) {
@@ -708,7 +721,17 @@ function homePage() {
 function startPage() {
   const v = $('#view');
   v.innerHTML = '<div class="crumb"><a href="#home">' + U('home') + '</a></div>' + U('startHtml');
+  const firstSteps = v.querySelector('ol.steps');
+  if (firstSteps) firstSteps.insertAdjacentHTML('afterend', '<p><a href="#install">' + U('installMore') + '</a></p>');
   v.appendChild(bridge(D.lessons[0].examples[0], { file: 'empty.ino' }));
+  v.appendChild(footer());
+}
+
+function installPage() {
+  const v = $('#view');
+  v.innerHTML = '<div class="crumb"><a href="#home">' + U('home') + '</a></div>' + U('installHtml').split('{IMG}').join(IMG_BASE);
+  const slot = $('#testCode');
+  if (slot) slot.replaceWith(bridge({ code: INSTALL_TEST, codeOnly: true, ranges: {}, en: [] }, { file: 'test_mini_r4.ino' }));
   v.appendChild(footer());
 }
 
@@ -750,6 +773,7 @@ function route(keepScroll) {
   const les = D.lessons.find(l => l.id === h);
   if (les) { renderSide(les.id); lessonPage(les); document.title = les.title.replace(/<[^>]+>/g, '').replace(/&lt;/g, '<').replace(/&gt;/g, '>') + ' · ' + U('brand'); }
   else if (h === 'start') { renderSide('start'); startPage(); document.title = U('startTitle') + ' · ' + U('brand'); }
+  else if (h === 'install') { renderSide('install'); installPage(); document.title = U('installTitle') + ' · ' + U('brand'); }
   else if (h === 'ref') { renderSide('ref'); refPage(); document.title = U('ref') + ' · ' + U('brand'); }
   else { renderSide('home'); homePage(); document.title = U('title'); }
   if (keepScroll) window.scrollTo(0, y); else window.scrollTo(0, 0);
