@@ -130,6 +130,16 @@
   .tools { display: flex; flex-wrap: wrap; gap: 8px; margin: 12px 0 8px; align-items: center; }
   .tools .rule { flex: 1; }
   .tools select { padding: 5px 8px; border: 1.5px solid var(--rule); border-radius: 9px; background: #fff; font-size: 14px; }
+  .rankbar { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; margin: 2px 0 6px; }
+  .rankbar .lbl { font-size: 14px; color: var(--ink-2); }
+  .seg { display: inline-flex; gap: 3px; padding: 3px; border-radius: 11px; background: var(--soft); }
+  .seg button { border: 0; border-radius: 8px; padding: 5px 13px; background: transparent; color: var(--ink-2); cursor: pointer; font: 500 15px/1.1 var(--display); }
+  .seg button:hover { color: var(--ink); background: #fff; }
+  .seg button[aria-pressed="true"] { background: var(--ink); color: #fff; }
+  .modepill { padding: 2px 10px; border-radius: 999px; background: var(--ink); color: #fff; font: 500 14px var(--display); }
+  th.rankcol { color: var(--ink); font-weight: 600; }
+  th.rankcol::after { content: ' ▼'; color: var(--blue); font-size: 11px; }
+  td.rankcol .sc { font-weight: 600; }
   .import { display: flex; flex-wrap: wrap; gap: 8px 12px; align-items: center; margin-top: 10px; padding: 9px 12px; border-radius: 10px; background: var(--yellow-soft); font-size: 14.5px; }
   table { width: 100%; border-collapse: collapse; font-size: 16px; }
   th { text-align: left; font: 500 13px var(--body); color: var(--ink-2); padding: 6px 8px; border-bottom: 1.5px solid var(--rule); white-space: nowrap; }
@@ -185,6 +195,7 @@
     #rows td.best { grid-column: 3; grid-row: 1; text-align: right; }
     #rows td.rd { grid-column: 2 / -1; display: flex; align-items: baseline; gap: 8px; }
     #rows td.rd::before { content: attr(data-l); min-width: 46px; font-size: 13px; color: var(--ink-2); }
+    #rows td.rd.rankcol::before { content: attr(data-l) ' ▼'; color: var(--ink); font-weight: 600; }
     #rows td.rd .sc { font-size: 16px; } #rows td.rd .tm { font-size: 13px; }
     #rows td.act { grid-column: 2 / -1; text-align: left; }
     #rows td.empty { grid-column: 1 / -1; }
@@ -265,7 +276,7 @@
     </section>
 
     <section class="card" aria-labelledby="boardTitle">
-      <h2 id="boardTitle">ทีมและอันดับ <span class="count" id="teamCount"></span></h2>
+      <h2 id="boardTitle">ทีมและอันดับ <span class="modepill" id="boardMode" hidden></span><span class="count" id="teamCount"></span></h2>
       <form class="addrow" id="addForm">
         <label class="f" for="teamIn" hidden>ชื่อทีม</label>
         <input class="in" id="teamIn" placeholder="พิมพ์ชื่อทีม แล้วกด เพิ่มทีม" autocomplete="off" maxlength="60">
@@ -288,7 +299,11 @@
         <button class="btn small danger" id="clearResults">ล้างผลทั้งหมด</button>
         <button class="btn small danger" id="clearAll">ลบทุกทีม</button>
       </div>
-      <p class="note" style="margin:0 0 6px">อันดับใช้ผลดีที่สุดของแต่ละทีม: คะแนนมากสุด ถ้าเท่ากันดูเวลาน้อยสุด ★ คือรอบที่ดีที่สุด</p>
+      <div class="rankbar" id="rankBar">
+        <span class="lbl">จัดอันดับตาม</span>
+        <div class="seg" id="rankBy" role="group" aria-label="จัดอันดับตาม"></div>
+      </div>
+      <p class="note" id="rankNote" style="margin:0 0 6px"></p>
       <table>
         <thead><tr id="headRow"></tr></thead>
         <tbody id="rows"></tbody>
@@ -337,7 +352,7 @@ document.addEventListener('fullscreenchange', () => { $('fullBtn').textContent =
 // ทีม: { id, name, results: { 1: ผลรอบ 1, 2: ผลรอบ 2 } }  ผล: { score, ms, parts, at, edited? }
 const STORE = 'qdd-dashboard-v2', OLD_STORE = 'qdd-dashboard-v1', MAX_ROUNDS = 3;
 let data = fresh();
-function fresh() { return { teams: [], currentId: null, round: 1, rounds: 2 }; }
+function fresh() { return { teams: [], currentId: null, round: 1, rounds: 2, rankBy: 'best' }; }
 function load() {
   try {
     const s = JSON.parse(localStorage.getItem(STORE));
@@ -346,6 +361,7 @@ function load() {
       data.teams.forEach((t) => { if (!t.results || typeof t.results !== 'object') t.results = {}; });
       data.rounds = clampInt(data.rounds, 1, MAX_ROUNDS, 2);
       data.round = clampInt(data.round, 1, data.rounds, 1);
+      if (data.rankBy !== 'best') data.rankBy = Number(data.rankBy) >= 1 && Number(data.rankBy) <= data.rounds ? Number(data.rankBy) : 'best';
     }
   } catch (e) { /* เริ่มใหม่ */ }
 }
@@ -454,6 +470,7 @@ $('roundsSel').onchange = () => {
   }
   data.rounds = n;
   if (data.round > n) { data.round = n; resetClock(); clearResultForm(); }
+  if (data.rankBy !== 'best' && data.rankBy > n) data.rankBy = 'best';
   save(); render();
 };
 const doneIn = (r) => data.teams.filter((t) => res(t, r)).length;
@@ -575,7 +592,7 @@ $('saveBtn').onclick = () => {
   const b = bestOf(t);
   $('savedNote').hidden = false;
   $('savedNote').textContent = 'บันทึกแล้ว: ทีม ' + t.name + ' รอบ ' + r + ' ได้ ' + resText(t.results[r]) +
-    (data.rounds > 1 ? ' · ผลดีที่สุดคือรอบ ' + b.round + ' (' + resText(b) + ')' : '') + ' · อันดับ ' + rankOf(t.id);
+    (data.rounds > 1 ? ' · ผลดีที่สุดคือรอบ ' + b.round + ' (' + resText(b) + ') · อันดับจากผลดีที่สุด ' + rankOf(t.id) + ' · อันดับรอบ ' + r + ': ' + rankOf(t.id, r) : ' · อันดับ ' + rankOf(t.id));
   render();
   if (doneIn(r) === data.teams.length) toast(r < data.rounds ? 'ครบทุกทีมในรอบ ' + r + ' แล้ว กด “รอบที่ ' + (r + 1) + '” เพื่อเริ่มรอบต่อไป' : 'ครบทุกทีมทุกรอบแล้ว ส่งออก CSV เก็บไว้ได้เลย');
 };
@@ -630,36 +647,57 @@ $('importBtn').onclick = () => {
   toast('นำเข้า ' + r.added + ' ทีมจากแดชบอร์ดเดิม');
 };
 
-// ===================== ตารางอันดับ (ใช้ผลดีที่สุดของแต่ละทีม) =====================
-function ranked() {
+// ===================== ตารางอันดับ: ใช้ผลดีที่สุด หรือเฉพาะรอบที่เลือก =====================
+// mode = 'best' (ผลดีที่สุดของแต่ละทีม) หรือเลขรอบ 1, 2, 3 (ใช้ผลรอบนั้นอย่างเดียว)
+const rankMode = () => (data.rounds < 2 ? 'best' : data.rankBy);
+const modeName = (m) => (m === 'best' ? 'ผลดีที่สุด' : 'รอบ ' + m);
+function ranked(mode = rankMode()) {
   const best = new Map(data.teams.map((t) => [t.id, bestOf(t)]));
-  const done = data.teams.filter((t) => best.get(t.id)).sort((a, b) => {
-    const x = best.get(a.id), y = best.get(b.id);
-    return y.score - x.score || x.ms - y.ms;
+  const key = new Map(data.teams.map((t) => [t.id, mode === 'best' ? best.get(t.id) : res(t, mode)]));
+  const done = data.teams.filter((t) => key.get(t.id)).sort((a, b) => {
+    const x = key.get(a.id), y = key.get(b.id);
+    return y.score - x.score || x.ms - y.ms;   // คะแนนมากก่อน ถ้าเท่ากันเวลาน้อยก่อน
   });
   const ranks = new Map();
   done.forEach((t, i) => {
-    const prev = done[i - 1], x = best.get(t.id), y = prev && best.get(prev.id);
+    const prev = done[i - 1], x = key.get(t.id), y = prev && key.get(prev.id);
     ranks.set(t.id, y && y.score === x.score && y.ms === x.ms ? ranks.get(prev.id) : i + 1);
   });
-  return { done, waiting: data.teams.filter((t) => !best.get(t.id)), ranks, best };
+  return { done, waiting: data.teams.filter((t) => !key.get(t.id)), ranks, best, key, mode };
 }
-const rankOf = (id) => ranked().ranks.get(id);
+const rankOf = (id, mode = 'best') => ranked(mode).ranks.get(id);
+function setRankBy(v) {
+  data.rankBy = v === 'best' ? 'best' : clampInt(v, 1, data.rounds, 1);
+  save(); editing = null; render();
+}
+$('rankBy').onclick = (e) => { const b = e.target.closest('button[data-v]'); if (b) setRankBy(b.dataset.v); };
+function renderRankBy() {
+  const multi = data.rounds > 1, m = rankMode();
+  $('rankBar').hidden = !multi;
+  $('rankBy').innerHTML = ['best'].concat(roundList()).map((v) =>
+    '<button type="button" data-v="' + v + '" aria-pressed="' + (String(v) === String(m)) + '">' + (v === 'best' ? 'ผลดีที่สุด' : 'รอบ ' + v) + '</button>').join('');
+  $('boardMode').hidden = !multi;
+  $('boardMode').textContent = 'อันดับ' + modeName(m);
+  $('rankNote').textContent = !multi ? 'อันดับ: คะแนนมากสุด ถ้าเท่ากันดูเวลาน้อยสุด'
+    : m === 'best' ? 'ใช้ผลดีที่สุดของแต่ละทีม: คะแนนมากสุด ถ้าเท่ากันดูเวลาน้อยสุด ★ คือรอบที่ดีที่สุด'
+    : 'ใช้ผลรอบ ' + m + ' อย่างเดียว: คะแนนมากสุด ถ้าเท่ากันดูเวลาน้อยสุด ทีมที่ยังไม่แข่งรอบ ' + m + ' อยู่ท้ายตาราง';
+}
 let editing = null;
 const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 const cellRes = (x) => (x ? '<span class="sc">' + x.score + '</span><span class="tm">' + fmt(x.ms) + '</span>' : '<span class="dash">–</span>');
 function renderHead() {
+  const m = rankMode(), multi = data.rounds > 1;
   $('headRow').innerHTML = '<th>อันดับ</th><th>ทีม</th>' +
-    roundList().map((r) => '<th class="' + (r === data.round ? 'now' : '') + '">รอบ ' + r + (r === data.round ? ' (กำลังแข่ง)' : '') + '</th>').join('') +
-    (data.rounds > 1 ? '<th>ดีที่สุด</th>' : '') + '<th><span hidden>จัดการ</span></th>';
+    roundList().map((r) => '<th class="' + (r === data.round ? 'now' : '') + (multi && r === m ? ' rankcol' : '') + '">รอบ ' + r + (r === data.round ? ' (กำลังแข่ง)' : '') + '</th>').join('') +
+    (multi ? '<th class="' + (m === 'best' ? 'rankcol' : '') + '">ดีที่สุด</th>' : '') + '<th><span hidden>จัดการ</span></th>';
 }
 function renderRows() {
-  const { done, waiting, ranks, best } = ranked();
+  const { done, waiting, ranks, best, key, mode } = ranked();
   const multi = data.rounds > 1;
   const rows = done.concat(waiting).map((t) => {
     const cur = t.id === data.currentId, rk = ranks.get(t.id), b = best.get(t.id);
-    const cls = (cur ? 'current ' : '') + (b ? '' : 'waiting');
-    const rdCls = (r, x) => 'rd' + (r === data.round ? ' now' : '') + (multi && x && b && b.round === r ? ' isbest' : '');
+    const cls = (cur ? 'current ' : '') + (key.get(t.id) ? '' : 'waiting');
+    const rdCls = (r, x) => 'rd' + (r === data.round ? ' now' : '') + (multi && r === mode ? ' rankcol' : '') + (multi && x && b && b.round === r ? ' isbest' : '');
     if (editing === t.id) {
       return '<tr class="editing ' + cls + '" data-id="' + t.id + '"><td class="rank">' + (rk || '–') + '</td>' +
         '<td class="name"><input class="in" data-f="name" aria-label="ชื่อทีม" value="' + esc(t.name) + '" maxlength="60"></td>' +
@@ -675,7 +713,7 @@ function renderRows() {
       '<td class="rank' + (rk && rk <= 3 ? ' r' + rk : '') + '">' + (rk || '–') + '</td>' +
       '<td class="name">' + esc(t.name) + (cur ? '<span class="tag">กำลังแข่ง</span>' : '') + '</td>' +
       roundList().map((r) => { const x = res(t, r); return '<td class="' + rdCls(r, x) + '" data-l="รอบ ' + r + '">' + cellRes(x) + '</td>'; }).join('') +
-      (multi ? '<td class="best">' + (b ? '<span class="sc">' + b.score + ' <span class="rtag">รอบ ' + b.round + '</span></span><span class="tm">' + fmt(b.ms) + '</span>' : '<span class="dash">รอแข่ง</span>') + '</td>' : '') +
+      (multi ? '<td class="best' + (mode === 'best' ? ' rankcol' : '') + '">' + (b ? '<span class="sc">' + b.score + ' <span class="rtag">รอบ ' + b.round + '</span></span><span class="tm">' + fmt(b.ms) + '</span>' : '<span class="dash">รอแข่ง</span>') + '</td>' : '') +
       '<td class="act">' + (cur ? '' : '<button class="btn small" data-a="pick">เลือก</button> ') +
       '<button class="btn small" data-a="edit">แก้ไข</button> <button class="btn small ghost" data-a="del" aria-label="ลบทีม ' + esc(t.name) + '">ลบ</button></td></tr>';
   });
@@ -749,17 +787,19 @@ function partsText(x) {
     (p.zones.length === ZN.length && p.cubes.length === ZN.length ? ' · โบนัส' : '');
 }
 function csvText() {
-  const { done, waiting, ranks, best } = ranked();
+  const { done, waiting, best, mode } = ranked();
   const q = (v) => { const s = String(v === null || v === undefined ? '' : v); return /[",\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s; };
-  const R = roundList();
-  const head = ['อันดับ', 'ทีม']
+  const R = roundList(), multi = R.length > 1;
+  const modes = multi ? ['best'].concat(R) : ['best'];
+  const rk = new Map(modes.map((m) => [m, ranked(m).ranks]));
+  const head = (multi ? ['อันดับ (ผลดีที่สุด)'].concat(R.map((r) => 'อันดับรอบ ' + r)) : ['อันดับ']).concat(['ทีม'])
     .concat(...R.map((r) => ['รอบ ' + r + ' คะแนน', 'รอบ ' + r + ' เวลา']))
     .concat(['ดีที่สุด คะแนน', 'ดีที่สุด เวลา', 'ดีที่สุด เวลา (วินาที)', 'ดีที่สุดจากรอบ'])
     .concat(R.map((r) => 'รายละเอียดรอบ ' + r));
   const lines = [head];
   for (const t of done.concat(waiting)) {
     const b = best.get(t.id);
-    lines.push([b ? ranks.get(t.id) : '', t.name]
+    lines.push(modes.map((m) => rk.get(m).get(t.id) || '').concat([t.name])
       .concat(...R.map((r) => { const x = res(t, r); return x ? [x.score, fmt(x.ms)] : ['', '']; }))
       .concat(b ? [b.score, fmt(b.ms), (b.ms / 1000).toFixed(2), b.round] : ['', '', '', 'ยังไม่แข่ง'])
       .concat(R.map((r) => partsText(res(t, r)))));
@@ -769,7 +809,8 @@ function csvText() {
 $('csvBtn').onclick = () => {
   if (!data.teams.length) return toast('ยังไม่มีข้อมูลให้ส่งออก');
   const d = new Date(), pad2 = (n) => String(n).padStart(2, '0');
-  const name = 'quick-dun-dun-' + data.rounds + 'rounds-' + d.getFullYear() + '-' + pad2(d.getMonth() + 1) + '-' + pad2(d.getDate()) + '-' + pad2(d.getHours()) + pad2(d.getMinutes()) + '.csv';
+  const m = rankMode();
+  const name = 'quick-dun-dun-' + data.rounds + 'rounds-' + (data.rounds > 1 ? 'rank-' + (m === 'best' ? 'best' : 'round' + m) + '-' : '') + d.getFullYear() + '-' + pad2(d.getMonth() + 1) + '-' + pad2(d.getDate()) + '-' + pad2(d.getHours()) + pad2(d.getMinutes()) + '.csv';
   const a = document.createElement('a');
   a.href = URL.createObjectURL(new Blob([csvText()], { type: 'text/csv;charset=utf-8' }));
   a.download = name; document.body.appendChild(a); a.click(); a.remove();
@@ -798,7 +839,7 @@ function renderHero() {
 }
 function render() {
   const t = current();
-  renderHero(); renderPick(); renderHead(); renderRows(); renderImport();
+  renderHero(); renderPick(); renderRankBy(); renderHead(); renderRows(); renderImport();
   $('roundsSel').value = String(data.rounds);
   $('forTeam').innerHTML = t ? 'บันทึกผลให้ทีม <b>' + esc(t.name) + '</b> <span class="rtag">รอบ ' + data.round + '</span>' : 'ยังไม่ได้เลือกทีม';
   $('saveBtn').textContent = t ? 'บันทึกผลรอบ ' + data.round + ' ให้ทีม ' + t.name : 'บันทึกผล';

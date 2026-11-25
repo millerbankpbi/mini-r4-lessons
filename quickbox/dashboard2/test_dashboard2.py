@@ -104,6 +104,7 @@ async def main():
         await save_r2('ทีมนกฮูก', 110, '45.00')      # ดีกว่ารอบ 1
         ok(await ev("bestOf(data.teams.find((x) => x.name === 'ทีมนกฮูก')).round") == 2, 'รอบ 2 คะแนนมากกว่า ผลดีที่สุดเป็นรอบ 2')
         ok('ผลดีที่สุดคือรอบ 2 (110 คะแนน 00:45.00)' in await text('#savedNote'), 'ข้อความยืนยันบอกว่าผลดีที่สุดมาจากรอบไหน', await text('#savedNote'))
+        ok('อันดับรอบ 2: 1' in await text('#savedNote'), 'ข้อความยืนยันบอกอันดับของรอบที่เพิ่งแข่งด้วย', await text('#savedNote'))
         await save_r2('ทีมหมาป่า', 40, '25.00')      # แย่กว่ารอบ 1
         bw = await ev("bestOf(data.teams.find((x) => x.name === 'ทีมหมาป่า'))")
         ok(bw['round'] == 1 and bw['score'] == 70, 'รอบ 2 คะแนนน้อยกว่า ผลดีที่สุดยังเป็นรอบ 1', bw)
@@ -120,6 +121,28 @@ async def main():
         stars = await ev("[...document.querySelectorAll('%s td.rd')].map((td) => td.classList.contains('isbest'))" % nrow)
         ok(stars == [False, True], 'ดาวอยู่ที่ช่องรอบที่ดีที่สุด', stars)
         ok(await ev("document.querySelectorAll('#rows tr:first-child td.rd.now').length") == 1, 'คอลัมน์รอบที่กำลังแข่งมีพื้นสีให้เห็น')
+
+        # ---------- จัดอันดับเฉพาะรอบ 1 หรือรอบ 2 ----------
+        names_now = "[...document.querySelectorAll('#rows tr')].map((tr) => tr.querySelector('.name').firstChild.textContent)"
+        ranks_now = "[...document.querySelectorAll('#rows td.rank')].map((td) => td.textContent)"
+        segs = await ev("[...document.querySelectorAll('#rankBy button')].map((b) => b.textContent + ':' + b.getAttribute('aria-pressed'))")
+        ok(segs == ['ผลดีที่สุด:true', 'รอบ 1:false', 'รอบ 2:false'], 'มีปุ่มจัดอันดับตาม ผลดีที่สุด / รอบ 1 / รอบ 2 เริ่มที่ผลดีที่สุด', segs)
+        await ev("data.teams.push({ id: 'xhorse', name: 'ทีมม้า', results: { 1: { score: 200, ms: 60000, parts: null, at: new Date().toISOString() } } }); save(); render()")
+        await pg.click('#rankBy [data-v="1"]'); await pg.wait_for_timeout(80)
+        o1, r1s = await ev(names_now), await ev(ranks_now)
+        ok(o1 == ['ทีมม้า', 'ทีมเสือ', 'ทีมหมาป่า', 'ทีมนกฮูก', 'ทีมจระเข้'] and r1s == ['1', '2', '2', '4', '5'], 'จัดอันดับเฉพาะรอบ 1: ใช้คะแนนและเวลารอบ 1 อย่างเดียว เท่ากันได้อันดับร่วม', (o1, r1s))
+        ok(await text('#boardMode') == 'อันดับรอบ 1' and (await text('#headRow th.rankcol')).startswith('รอบ 1'), 'หัวการ์ดและหัวคอลัมน์บอกว่าจัดอันดับจากรอบ 1')
+        await pg.click('#rankBy [data-v="2"]'); await pg.wait_for_timeout(80)
+        o2, r2s = await ev(names_now), await ev(ranks_now)
+        ok(o2 == ['ทีมนกฮูก', 'ทีมเสือ', 'ทีมหมาป่า', 'ทีมจระเข้', 'ทีมม้า'] and r2s == ['1', '2', '3', '4', '–'], 'จัดอันดับเฉพาะรอบ 2: ทีมที่ยังไม่แข่งรอบ 2 อยู่ท้ายตาราง ไม่มีอันดับ', (o2, r2s))
+        ok('ใช้ผลรอบ 2 อย่างเดียว' in await text('#rankNote'), 'คำอธิบายใต้ปุ่มเปลี่ยนตามแบบที่เลือก', await text('#rankNote'))
+        await pg.reload(); await pg.wait_for_timeout(300)
+        ok(await ev('data.rankBy') == 2 and await ev(names_now) == o2, 'รีเฟรชแล้วยังจัดอันดับตามรอบ 2')
+        await pg.click('#rankBy [data-v="best"]'); await pg.wait_for_timeout(80)
+        ok(await ev(names_now) == ['ทีมม้า', 'ทีมนกฮูก', 'ทีมเสือ', 'ทีมหมาป่า', 'ทีมจระเข้'], 'กลับมาจัดอันดับจากผลดีที่สุด', await ev(names_now))
+        await ev("data.teams = data.teams.filter((x) => x.id !== 'xhorse'); save(); render()")
+        tid = await ev("data.teams.find((x) => x.name === 'ทีมนกฮูก').id")
+        await ev("setCurrent('%s')" % tid)
 
         # ---------- บันทึกทับต้องยืนยัน ----------
         answer['v'] = False; dialogs.clear()
@@ -155,10 +178,13 @@ async def main():
         # ---------- จำนวนรอบ ----------
         await pg.select_option('#roundsSel', '3'); await pg.wait_for_timeout(80)
         ok(await ev("document.querySelectorAll('#roundBtns button').length") == 3 and 'รอบ 3' in await text('#headRow'), 'ตั้ง 3 รอบได้')
+        ok(await ev("document.querySelectorAll('#rankBy button').length") == 4, '3 รอบ: ปุ่มจัดอันดับมีรอบ 3 เพิ่ม')
+        await pg.click('#rankBy [data-v="3"]'); await pg.wait_for_timeout(50)
         await pg.select_option('#roundsSel', '1'); await pg.wait_for_timeout(80)
         ok(await ev('data.rounds') == 3 and 'ลบผลรอบนั้นก่อน' in await text('#toast'), 'มีผลรอบ 2 อยู่ ลดเหลือ 1 รอบไม่ได้ (กันผลหาย)')
         await pg.select_option('#roundsSel', '2'); await pg.wait_for_timeout(80)
         ok(await ev('data.rounds') == 2, 'กลับเป็น 2 รอบ')
+        ok(await ev('data.rankBy') == 'best' and await text('#boardMode') == 'อันดับผลดีที่สุด', 'ลดเหลือ 2 รอบตอนดูอันดับรอบ 3 อยู่ กลับไปใช้ผลดีที่สุดเอง')
 
         # ---------- เก็บข้อมูลข้ามการรีเฟรช ----------
         before = await ev('JSON.stringify([data.round, data.rounds, data.teams.map((t) => [t.name, t.results])])')
@@ -171,10 +197,19 @@ async def main():
         d = await dl.value
         raw = open(await d.path(), encoding='utf-8-sig').read()
         rows = list(csv.reader(io.StringIO(raw)))
-        ok(rows[0][:9] == ['อันดับ', 'ทีม', 'รอบ 1 คะแนน', 'รอบ 1 เวลา', 'รอบ 2 คะแนน', 'รอบ 2 เวลา', 'ดีที่สุด คะแนน', 'ดีที่สุด เวลา', 'ดีที่สุด เวลา (วินาที)'] and rows[0][9] == 'ดีที่สุดจากรอบ', 'CSV: หัวตารางมีทุกรอบและผลดีที่สุด', rows[0])
-        cro = next(r for r in rows if r[1] == 'ทีมจระเข้')
-        ok(cro[2:10] == ['30', '00:20.00', '30', '00:15.50', '30', '00:15.50', '15.50', '2'], 'CSV: แถวทีมบอกผลแต่ละรอบ และดีที่สุดจากรอบ 2', cro)
-        ok('2rounds' in d.suggested_filename, 'ชื่อไฟล์ CSV บอกจำนวนรอบ', d.suggested_filename)
+        ok(rows[0][:12] == ['อันดับ (ผลดีที่สุด)', 'อันดับรอบ 1', 'อันดับรอบ 2', 'ทีม', 'รอบ 1 คะแนน', 'รอบ 1 เวลา', 'รอบ 2 คะแนน', 'รอบ 2 เวลา', 'ดีที่สุด คะแนน', 'ดีที่สุด เวลา', 'ดีที่สุด เวลา (วินาที)', 'ดีที่สุดจากรอบ'], 'CSV: มีอันดับทั้ง 3 แบบ ผลทุกรอบ และผลดีที่สุด', rows[0])
+        cro = next(r for r in rows if r[3] == 'ทีมจระเข้')
+        ok(cro[:12] == ['4', '4', '3', 'ทีมจระเข้', '30', '00:20.00', '30', '00:15.50', '30', '00:15.50', '15.50', '2'], 'CSV: แถวทีมบอกอันดับแต่ละแบบ ผลแต่ละรอบ และดีที่สุดจากรอบ 2', cro)
+        nok_row = next(r for r in rows if r[3] == 'ทีมนกฮูก')
+        ok(nok_row[2] == '', 'CSV: ทีมที่ยังไม่มีผลรอบ 2 ช่องอันดับรอบ 2 ว่าง', nok_row)
+        ok('2rounds' in d.suggested_filename and 'rank-best' in d.suggested_filename, 'ชื่อไฟล์ CSV บอกจำนวนรอบและแบบจัดอันดับ', d.suggested_filename)
+        await pg.click('#rankBy [data-v="1"]'); await pg.wait_for_timeout(50)
+        async with pg.expect_download() as dl1:
+            await pg.click('#csvBtn')
+        d1 = await dl1.value
+        rows1 = list(csv.reader(io.StringIO(open(await d1.path(), encoding='utf-8-sig').read())))
+        ok([r[3] for r in rows1[1:]] == ['ทีมเสือ', 'ทีมหมาป่า', 'ทีมนกฮูก', 'ทีมจระเข้'] and 'rank-round1' in d1.suggested_filename, 'CSV ตอนเลือกรอบ 1: เรียงแถวตามอันดับรอบ 1', [r[3] for r in rows1[1:]])
+        await pg.click('#rankBy [data-v="best"]'); await pg.wait_for_timeout(50)
 
         # ---------- นำเข้าจากแดชบอร์ดเดิม ----------
         await ev("""localStorage.setItem('qdd-dashboard-v1', JSON.stringify({ currentId: null, teams: [
